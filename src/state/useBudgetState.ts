@@ -56,6 +56,7 @@ export function useBudgetState() {
   )
 
   const carryover = settings.data?.carryoverAcrossPeriod === true
+  const reserveEnabled = settings.data?.reserveEnabled !== false
 
   const overrides = useMemo(
     () =>
@@ -66,29 +67,39 @@ export function useBudgetState() {
     [overridesData.data],
   )
 
-  const state = useMemo(() => {
+  const engineInput = useMemo(() => ({
+    events: engineEvents,
+    transactions: engineTxs,
+    today,
+    carryoverAcrossPeriod: carryover,
+    overrides,
+  }), [engineEvents, engineTxs, today, carryover, overrides])
+
+  // 两遍计算：第一遍确定当期边界，算出未付固定支出后第二遍从当期总预算中扣除。
+  const baseState = useMemo(() => {
     if (loading || error || engineEvents.length === 0) return null
-    return computeBudgetState({
-      events: engineEvents,
-      transactions: engineTxs,
-      today,
-      carryoverAcrossPeriod: carryover,
-      overrides,
-    })
-  }, [engineEvents, engineTxs, today, carryover, overrides, loading, error])
+    return computeBudgetState(engineInput)
+  }, [engineInput, engineEvents.length, loading, error])
 
   const reserve: ReserveResult = useMemo(() => {
-    if (!state) return { reserved: 0, upcoming: [] }
+    if (!baseState) return { reserved: 0, upcoming: [] }
     return computeReserve(
       billsData.data?.bills ?? [],
       billsData.data?.payments ?? [],
-      state.periodStart,
-      state.periodEnd,
+      baseState.periodStart,
+      baseState.periodEnd,
       today,
     )
-  }, [state, billsData.data, today])
+  }, [baseState, billsData.data, today])
 
-  const reserveEnabled = settings.data?.reserveEnabled !== false
+  const state = useMemo(() => {
+    if (!baseState) return null
+    if (!reserveEnabled || reserve.reserved <= 0) return baseState
+    return computeBudgetState({
+      ...engineInput,
+      fixedReserve: { periodStart: baseState.periodStart, amount: reserve.reserved },
+    })
+  }, [baseState, engineInput, reserveEnabled, reserve.reserved])
 
   return {
     state,

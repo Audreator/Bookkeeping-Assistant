@@ -72,6 +72,13 @@ export function computeBudgetState(input: EngineInput): BudgetState {
   const firstEvent = events[0]
   if (!firstEvent || firstEvent.at > today) return ZERO_STATE(today)
 
+  // 固定支出预留：从匹配期间的总预算中预先扣除，其余日期的每日发放随之重算。
+  const fixedReserve = input.fixedReserve
+  const effectiveBudget = (cfg: Config, start: string): number =>
+    fixedReserve && fixedReserve.amount > 0 && fixedReserve.periodStart === start
+      ? budgetOf(cfg, start) - fixedReserve.amount
+      : budgetOf(cfg, start)
+
   const spentByDay = new Map<string, number>()
   for (const t of transactions) {
     if (t.status !== 'confirmed') continue
@@ -95,7 +102,7 @@ export function computeBudgetState(input: EngineInput): BudgetState {
   let cfg = configOf(effectiveConfig(events, firstEvent.at)!)
   let periodStart = firstEvent.at
   let periodEnd = endOfPeriod(periodStart, cfg)
-  let periodBudget = budgetOf(cfg, periodStart)
+  let periodBudget = effectiveBudget(cfg, periodStart)
   let pool = 0
   let issuedInPeriod = 0
   let spentInPeriod = 0
@@ -106,7 +113,7 @@ export function computeBudgetState(input: EngineInput): BudgetState {
   const startPeriod = (day: string, keepPool: boolean) => {
     periodStart = day
     periodEnd = endOfPeriod(day, cfg)
-    periodBudget = budgetOf(cfg, day)
+    periodBudget = effectiveBudget(cfg, day)
     issuedInPeriod = 0
     spentInPeriod = 0
     if (!keepPool) pool = 0
@@ -161,7 +168,7 @@ export function computeBudgetState(input: EngineInput): BudgetState {
         startPeriod(d, true)
       } else {
         // 预算额变更：无需特殊处理，后续每日发放公式自动重算
-        periodBudget = budgetOf(cfg, periodStart)
+        periodBudget = effectiveBudget(cfg, periodStart)
       }
     }
 

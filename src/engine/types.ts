@@ -75,4 +75,9 @@ export interface EngineInput {
   carryoverAcrossPeriod: boolean
   /** 单独某天的预算设置（可选） */
   overrides?: DayOverride[]
+  /**
+   * 固定支出预留：从 periodStart 匹配的当期总预算中预先扣除（金额），
+   * 扣除后其余日期的每日发放自动按余额重算；不匹配任何期间时忽略。
+   */
+  fixedReserve?: { periodStart: string; amount: number }
 }

@@ -35,12 +35,13 @@ export function Today() {
   if (!state) return <Page><DataError error={new Error('未找到初始预算，请检查服务初始化设置')} onRetry={retry} /></Page>
 
   const reserved = reserveEnabled ? reserve.reserved : 0
-  const displayValue = reserveEnabled && reserved > 0 ? state.availableToday - reserved : state.availableToday
+  // 固定支出已从当期总预算中预先扣除并重算每日额度，此处直接用引擎结果。
+  const displayValue = state.availableToday
   const overspent = displayValue < 0
   const mainLabel = overspent
     ? '今日超支'
     : reserveEnabled && reserved > 0
-      ? '自由可花（已扣除预留）'
+      ? '今日可花（固定支出已从本期预算扣除）'
       : '今日可花'
   const progress = state.periodBudget > 0 ? state.spentInPeriod / state.periodBudget : 0
   const spentToday = state.days.find((d) => d.date === today)?.spent ?? 0

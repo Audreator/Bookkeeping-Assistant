@@ -320,7 +320,7 @@ export function Settings() {
         <label className={rowClass}>
           <span>
             <span className="block text-sm">扣除固定支出预留</span>
-            <span className="text-xs text-stone-400">今天可花中扣掉本期内即将到期的账单</span>
+            <span className="text-xs text-stone-400">从本期总预算中扣掉未付账单，每日额度按余额重算</span>
           </span>
           <input
             type="checkbox"

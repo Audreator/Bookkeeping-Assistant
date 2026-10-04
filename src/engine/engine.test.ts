@@ -355,3 +355,68 @@ describe('computeBudgetState 边界', () => {
     expect(Number.isInteger(Math.round(s.availableToday * 100))).toBe(true)
   })
 })
+
+describe('固定支出预留从当期总预算扣除', () => {
+  const withReserve = (amount: number, today = '2026-10-03') =>
+    computeBudgetState({
+      events: OCT_3100,
+      transactions: [],
+      today,
+      carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: '2026-10-01', amount },
+    })
+
+  it('月预算 3100 预留 620 → 有效预算 2480，每日发放按 80 重算', () => {
+    const s = withReserve(620)
+    expect(s.periodBudget).toBe(2480)
+    expect(s.baseToday).toBe(80)
+    expect(s.availableToday).toBe(240)
+    expect(s.remainingInPeriod).toBe(2480)
+    expect(s.days[30].available).toBe(2480)
+  })
+
+  it('预留只作用于匹配的期间，不影响其他期间', () => {
+    const s = computeBudgetState({
+      events: OCT_3100,
+      transactions: [],
+      today: '2026-10-03',
+      carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: '2026-09-01', amount: 620 },
+    })
+    expect(s.periodBudget).toBe(3100)
+    expect(s.baseToday).toBe(100)
+  })
+
+  it('预留随消费与单独预算一起参与重算', () => {
+    const s = computeBudgetState({
+      events: OCT_3100,
+      transactions: [tx('2026-10-01', 80)],
+      today: '2026-10-02',
+      carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: '2026-10-01', amount: 620 },
+    })
+    // 有效预算 2480，每日 80；第一天花 80 → 次日可花 80
+    expect(s.availableToday).toBe(80)
+    expect(s.remainingInPeriod).toBe(2400)
+  })
+
+  it('预留超过当期预算时每日额度被压负并标记不可行', () => {
+    const s = withReserve(5000)
+    expect(s.periodBudget).toBe(-1900)
+    expect(s.overridesFeasible).toBe(false)
+  })
+
+  it('周模式同样从当周预算扣除', () => {
+    const s = computeBudgetState({
+      events: [ev('2026-10-05', { mode: 'week', monthBudget: 0, weekBudgetOverride: 700 })],
+      transactions: [],
+      today: '2026-10-05',
+      carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: '2026-10-05', amount: 350 },
+    })
+    expect(s.periodBudget).toBe(350)
+    expect(s.baseToday).toBe(50)
+    expect(s.days).toHaveLength(7)
+    expect(s.days[6].available).toBe(350)
+  })
+})
