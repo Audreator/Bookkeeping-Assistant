@@ -36,12 +36,14 @@ export function parseBankEmail(input: {
   const referenceDate = Number.isNaN(base.getTime()) ? undefined : toISO(base.getFullYear(), base.getMonth() + 1, base.getDate())
   const payment = parsePaymentText(haystack, referenceDate)
   const time = parsePaymentDateTime(haystack, payment?.type ?? 'expense', referenceDate)
-  let kind: BankTxKind = payment?.type ?? 'ignore'
+  // 邮件通道保持“收入/转入类不记账”：文本通知通道已把进账记为退款，这里按收据审计约定忽略。
+  const incomeLike = INCOME_RE.test(haystack)
+  let kind: BankTxKind = incomeLike ? 'ignore' : payment?.type ?? 'ignore'
   const amount = payment?.amount ?? null
   let occurredAt = time.occurredAt ?? (full || md ? null : Number.isNaN(base.getTime()) ? null : toISO(base.getFullYear(), base.getMonth() + 1, base.getDate()))
   const occurredTime = time.occurredTime ?? null
   let reason = payment ? payment.type === 'refund' ? '已完成退款通知' : '已完成支付/支出通知' : '未识别为已完成交易通知'
-  if (!payment && INCOME_RE.test(haystack)) reason = '收入/转入类或营销，不记账'
+  if (incomeLike) reason = '收入/转入类或营销，不记账'
   else if (!payment && /失败|处理中|待支付|退款中|未到账/.test(haystack)) reason = '交易未完成或失败，不记账'
   else if (!payment && /退款|消费|支出|扣款|支付/.test(haystack)) reason = '未解析出金额或交易状态不明确，等待样本校准'
   if ((full || md) && !time.occurredAt) {

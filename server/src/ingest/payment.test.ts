@@ -29,8 +29,8 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
     expect(parsePaymentText('微信支付 杭州深度求索 使用零钱支付 ·1.00 当前状态 支付成功')?.amount).toBe(1)
   })
 
-  it('带加号的一般收款不能冒充退款', () => {
-    expect(parsePaymentText('微信支付\n收款成功 +20.00')).toBeNull()
+  it('一般收款按进账记为退款，带加号仍不冒充支出', () => {
+    expect(parsePaymentText('微信支付\n收款成功 +20.00')).toMatchObject({ type: 'refund', amount: 20 })
     expect(parsePaymentText('退款到账\n+20.00')).toMatchObject({ type: 'refund', amount: 20 })
   })
 
@@ -56,18 +56,21 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
     '退款金额 ¥35.50\n退款失败',
     '退款申请已提交\n退款金额 ¥35.50\n原订单支付成功',
     '支付成功\n退款未到账\n退款金额 ¥35.50',
-    '工资到账\n+5000.00',
-    '微信支付\n收入 ¥20.00',
     '支付成功可领取20.00元红包',
-    '交易成功\n转入金额 ¥20.00',
     '原订单支付成功\n退款状态：处理中\n¥20.00',
     '退款到账失败\n¥20.00',
     '申请退款成功\n退款金额 ¥20.00',
     '退款申请成功\n退款金额 ¥20.00',
     '预计退款到账\n退款金额 ¥20.00',
-    '交易成功\n转入成功\n¥20.00',
   ])('非已完成支付或退款不入账：%s', (text) => {
     expect(parsePaymentText(text)).toBeNull()
+  })
+
+  it('一般进账通知按退款入账', () => {
+    expect(parsePaymentText('工资到账\n+5000.00')).toMatchObject({ type: 'refund', amount: 5000 })
+    expect(parsePaymentText('微信支付\n收入 ¥20.00')).toMatchObject({ type: 'refund', amount: 20 })
+    expect(parsePaymentText('交易成功\n转入金额 ¥20.00')).toMatchObject({ type: 'refund', amount: 20 })
+    expect(parsePaymentText('交易成功\n转入成功\n¥20.00')).toMatchObject({ type: 'refund', amount: 20 })
   })
 
   it('退款状态优先于原订单支付状态，金额取本次退款', () => {
@@ -175,8 +178,8 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
       expect(parsed?.occurredTime).toBeUndefined()
     })
 
-  it.each(['收入', '收款', '转入'])('收/支字段为%s时不判为支出', (direction) => {
-    expect(parsePaymentText(`交易成功\n收/支：${direction}\n金额 ¥20.00`)).toBeNull()
+  it.each(['收入', '收款', '转入'])('收/支字段为%s时记为退款而非支出', (direction) => {
+    expect(parsePaymentText(`交易成功\n收/支：${direction}\n金额 ¥20.00`)).toMatchObject({ type: 'refund', amount: 20 })
   })
 
   it('泛化交易成功与裸正号金额不能确定支出方向', () => {
@@ -319,16 +322,21 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
   })
 
   it.each([
-    '动账通知\n您尾号1234的账户网联 入账收入1.23元，点此查看详情',
-    '招商银行\n您尾号1234的账户入账人民币1.23元',
     '动账通知\n您尾号1234的账户待出账 网联支出1.23元，点此查看详情',
     '动账通知\n您尾号1234的账户出账处理中 网联支出1.23元，点此查看详情',
     '动账通知\n预计您尾号1234的账户出账 网联支出1.23元，点此查看详情',
     '招商银行\n您账户1234于10月04日22:45发生快捷支付扣款失败，人民币1.23',
     '招商银行\n预计您账户1234于10月04日22:45发生快捷支付扣款，人民币1.23',
     '招商银行\n您账户1234申请发生快捷支付扣款，人民币1.23',
-  ])('银行收入或未完成动账不能成为支出退款：%s', (text) => {
+  ])('银行未完成动账不能成为支出退款：%s', (text) => {
     expect(parsePaymentText(text, '2026-10-04')).toBeNull()
+  })
+
+  it('银行入账通知按退款入账，不猜商户或时间', () => {
+    const credited = parsePaymentText('动账通知\n您尾号1234的账户网联 入账收入1.23元，点此查看详情')
+    expect(credited).toMatchObject({ type: 'refund', amount: 1.23, merchant: '' })
+    expect(credited?.occurredAt).toBeUndefined()
+    expect(parsePaymentText('招商银行\n您尾号1234的账户入账人民币1.23元')).toMatchObject({ type: 'refund', amount: 1.23 })
   })
 
   it('招行快捷支付扣款通知按引用日期解析月日，不把支付通道当商家', () => {
@@ -355,5 +363,57 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
     expect(parsed?.occurredAt).toBeUndefined()
     expect(parsed?.occurredTime).toBeUndefined()
     expect(parsePaymentText('动账通知\n您尾号1234的账户出账 网联支出，点此查看详情')).toBeNull()
+  })
+
+  it('真实收款通知按退款入账并保留来源时间', () => {
+    expect(parsePaymentText('您账户1234于10月05日01:17收款人民币0.01', '2026-10-05'))
+      .toMatchObject({ type: 'refund', amount: 0.01, occurredAt: '2026-10-05', occurredTime: '01:17:00' })
+    const credited = parsePaymentText('您尾号1234的账户网联 入账收入0.02元，点此查看详情')
+    expect(credited).toMatchObject({ type: 'refund', amount: 0.02 })
+    expect(credited?.occurredAt).toBeUndefined()
+    expect(parsePaymentText('微信支付\n收款到账\n¥0.01')).toMatchObject({ type: 'refund', amount: 0.01 })
+    expect(parsePaymentText('支付宝\n收款成功\n0.01元')).toMatchObject({ type: 'refund', amount: 0.01 })
+  })
+
+  it('收入近义词（收入/进账/存入/汇入/工资发放/利息/报销）按退款入账', () => {
+    expect(parsePaymentText('您账户1234收入人民币1.00元')).toMatchObject({ type: 'refund', amount: 1 })
+    expect(parsePaymentText('工资发放5000.00元')).toMatchObject({ type: 'refund', amount: 5000 })
+    expect(parsePaymentText('利息入账1.23元')).toMatchObject({ type: 'refund', amount: 1.23 })
+    expect(parsePaymentText('现金存入500.00元')).toMatchObject({ type: 'refund', amount: 500 })
+    expect(parsePaymentText('账户1234汇入人民币2.00元')).toMatchObject({ type: 'refund', amount: 2 })
+    expect(parsePaymentText('转账收入 20.00元')).toMatchObject({ type: 'refund', amount: 20 })
+    expect(parsePaymentText('收到一笔转账 60.00元')).toMatchObject({ type: 'refund', amount: 60 })
+    expect(parsePaymentText('报销到账 人民币30.00元')).toMatchObject({ type: 'refund', amount: 30 })
+  })
+
+  it('支出近义词（扣费/付费/花费/取现/转出）与“发生一笔…的消费”按支出入账', () => {
+    expect(parsePaymentText('扣费成功 28.00元')).toMatchObject({ type: 'expense', amount: 28 })
+    expect(parsePaymentText('账户1234发生一笔38.00元的消费')).toMatchObject({ type: 'expense', amount: 38 })
+    expect(parsePaymentText('取现完成 人民币100.00元')).toMatchObject({ type: 'expense', amount: 100 })
+    expect(parsePaymentText('转出成功 人民币50.00元')).toMatchObject({ type: 'expense', amount: 50 })
+    expect(parsePaymentText('交易成功\n交易类型：支取\n金额 ¥20.00')).toMatchObject({ type: 'expense', amount: 20 })
+    expect(parsePaymentText('缴费成功 100.00元')).toMatchObject({ type: 'expense', amount: 100 })
+    expect(parsePaymentText('信用卡还款成功 2000.00元')).toMatchObject({ type: 'expense', amount: 2000 })
+  })
+
+  it('退款近义词（退还/退货/撤销/返款/原路退回）按退款入账', () => {
+    expect(parsePaymentText('订单已退还至原支付账户，金额20.00元')).toMatchObject({ type: 'refund', amount: 20 })
+    expect(parsePaymentText('退货成功，金额35.50元')).toMatchObject({ type: 'refund', amount: 35.5 })
+    expect(parsePaymentText('交易已撤销，人民币20.00元')).toMatchObject({ type: 'refund', amount: 20 })
+    expect(parsePaymentText('返款到账 人民币12.00元')).toMatchObject({ type: 'refund', amount: 12 })
+    expect(parsePaymentText('您的退款已原路退回，金额8.00元')).toMatchObject({ type: 'refund', amount: 8 })
+    expect(parsePaymentText('退费成功，金额45.00元')).toMatchObject({ type: 'refund', amount: 45 })
+  })
+
+  it.each(['待到账 人民币20.00元', '入账处理中 20.00元', '转出失败 20.00元', '收款中 20.00元', '退回失败 20.00元', '存入失败 20.00元'])
+    ('未完成的进账/支出近义词仍不入账：%s', (text) => {
+      expect(parsePaymentText(text)).toBeNull()
+    })
+
+  it('“返还/退还”类条件营销与红包到账文案不改变已完成支付', () => {
+    expect(parsePaymentText('支付成功后可返还20.00元')).toBeNull()
+    expect(parsePaymentText('最高返还¥50.00')).toBeNull()
+    expect(parsePaymentText('消费满35.50元赠送红包')).toBeNull()
+    expect(parsePaymentText('付款成功\n实付金额 ¥20.00\n订单说明\n红包已到账')).toMatchObject({ type: 'expense', amount: 20 })
   })
 })

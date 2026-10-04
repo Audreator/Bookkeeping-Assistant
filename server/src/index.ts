@@ -36,5 +36,5 @@ if (existsSync(distDir)) {
   await app.register(fastifyStatic, { root: distDir })
 }
 
-await app.listen({ port: env.port, host: '0.0.0.0' })
+await app.listen({ port: env.port, host: env.host })
 console.log(`记账本服务已启动：http://localhost:${env.port}`)

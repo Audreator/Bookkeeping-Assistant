@@ -16,6 +16,7 @@ export const env = {
     : process.env.TEST_DATABASE_URL ?? '',
   jwtSecret: required('JWT_SECRET'),
   port: Number(process.env.PORT ?? 8787),
+  host: process.env.HOST ?? '0.0.0.0',
   defaultUsername: process.env.DEFAULT_USERNAME ?? 'owner',
   defaultPassword: process.env.DEFAULT_PASSWORD,
   // 邮件自动记账（可选；未配置则不启动轮询）

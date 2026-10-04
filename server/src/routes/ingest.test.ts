@@ -242,8 +242,12 @@ describe('POST /api/ingest/ocr（快捷指令通道）', () => {
       const cmb = await post({ text: '您账户1234于10月04日22:45在【财付通-微信支付-微信零钱充值账户】发生快捷支付扣款，人民币1.23' })
       expect(cmb.statusCode).toBe(201)
       expect(cmb.json().transaction).toMatchObject({ type: 'expense', amount: 1.23, merchant: null, occurredAt: '2026-10-04', occurredTime: '22:45:00' })
-      expect((await post({ text: '您尾号1234的账户网联 入账收入1.23元，点此查看详情' })).statusCode).toBe(422)
-      expect((await post({ text: '您尾号1234的账户入账人民币1.23元' })).statusCode).toBe(422)
+      const credited = await post({ text: '您尾号1234的账户网联 入账收入1.23元，点此查看详情' })
+      expect(credited.statusCode).toBe(201)
+      expect(credited.json().transaction).toMatchObject({ type: 'refund', amount: 1.23, merchant: null })
+      const creditedNoTime = await post({ text: '您尾号1234的账户入账人民币1.23元' })
+      expect(creditedNoTime.statusCode).toBe(201)
+      expect(creditedNoTime.json().transaction).toMatchObject({ type: 'refund', amount: 1.23, merchant: null, occurredAt: '2026-10-04', occurredTime: '23:30:01' })
     } finally { clock.mockRestore() }
   })
 

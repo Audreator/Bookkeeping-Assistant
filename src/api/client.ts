@@ -1,5 +1,8 @@
 const TOKEN_KEY = 'jizhang.token'
 
+// 子路径部署时由构建变量 VITE_API_BASE 注入前缀（如 /m9f8...），默认空串（根路径部署）。
+const API_PREFIX = import.meta.env.VITE_API_BASE ?? ''
+
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
 export const setToken = (token: string | null): void => {
   if (token) localStorage.setItem(TOKEN_KEY, token)
@@ -20,7 +23,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const token = getToken()
   if (token) headers.authorization = `Bearer ${token}`
 
-  const res = await fetch(path, {
+  const res = await fetch(API_PREFIX + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
