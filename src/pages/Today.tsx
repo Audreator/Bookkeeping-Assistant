@@ -44,7 +44,7 @@ export function Today() {
       : '今日可花'
   const progress = state.periodBudget > 0 ? state.spentInPeriod / state.periodBudget : 0
   const spentToday = state.days.find((d) => d.date === today)?.spent ?? 0
-  const recent = (txs.data ?? []).slice(0, 5)
+  const recent = txs.data ?? []
   const dueBills = reserve.upcoming.filter((u) => !u.paid)
 
   const bookBill = async (billId: number, dueDate: string) => {
