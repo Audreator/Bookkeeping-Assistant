@@ -4,6 +4,21 @@ import type { Tx } from '../api/types'
 import { TxList } from './TxList'
 
 afterEach(cleanup)
+
+it('极小金额支出与退款冲减后合计不出现 NaN', () => {
+  const base: Tx = { id: 1, type: 'expense', amount: 0.01, categoryId: null,
+    merchant: null, note: null, occurredAt: '2026-10-05', occurredTime: '01:13:00',
+    source: 'ocr', refundOfId: null, status: 'confirmed', createdAt: 'x' }
+  render(<TxList categories={[]} txs={[
+    { ...base, id: 4, type: 'refund', amount: 0.02, occurredTime: '01:35:33' },
+    { ...base, id: 3, type: 'refund', amount: 0.01, occurredTime: '01:17:00' },
+    { ...base, id: 2, amount: 0.02, occurredTime: '01:14:36' },
+    base,
+  ]} />)
+  expect(screen.queryByText(/NaN/)).toBeNull()
+  expect(screen.getByText('¥0.00')).toBeTruthy()
+})
+
 it('展示秒级交易时刻，并明确旧记录未知时间', () => {
   const base: Tx = { id: 1, type: 'expense', amount: 1, categoryId: null,
     merchant: '便利店', note: null, occurredAt: '2026-10-04', source: 'manual',

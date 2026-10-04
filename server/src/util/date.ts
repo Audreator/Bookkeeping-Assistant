@@ -20,7 +20,12 @@ export function formatDateTime(d: Date): string {
 export function round2(n: number): number {
   if (!Number.isFinite(n)) return n
   const sign = n < 0 ? -1 : 1
-  return sign * Number(Math.round(Number(`${Math.abs(n)}e2`)) + 'e-2')
+  const abs = Math.abs(n)
+  // 与前端同语义：极小残差归零，定点缩放避免科学计数法拼串得到 NaN。
+  if (abs < 1e-6) return 0
+  const scaled = Number(`${abs.toFixed(8)}e2`)
+  if (!Number.isFinite(scaled)) return n
+  return sign * Number(`${Math.round(scaled)}e-2`)
 }
 
 /** 解析 'YYYY-MM-DD HH:mm:ss' 为本机时区 Date */

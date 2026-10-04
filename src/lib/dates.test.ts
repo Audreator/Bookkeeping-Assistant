@@ -77,6 +77,13 @@ describe('dates', () => {
     expect(round2(-0.125)).toBe(-0.13)
   })
 
+  it('round2 把浮点残差归零，不因科学计数法得到 NaN', () => {
+    expect(round2(0.1 + 0.2 - 0.3)).toBe(0)
+    expect(round2(0.01 + 0.02 - 0.01 - 0.02)).toBe(0)
+    expect(round2(1.734723475976807e-18)).toBe(0)
+    expect(round2(-1.734723475976807e-18)).toBe(0)
+  })
+
   it('monthKey 提取年月', () => {
     expect(monthKey('2026-10-04')).toBe('2026-10')
     expect(monthKey('2026-01-31')).toBe('2026-01')

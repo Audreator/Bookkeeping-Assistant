@@ -62,8 +62,13 @@ export function weekdayCN(iso: string): string {
 export function round2(n: number): number {
   if (!Number.isFinite(n)) return n
   const sign = n < 0 ? -1 : 1
-  const rounded = Number(Math.round(Number(`${Math.abs(n)}e2`)) + 'e-2')
-  return sign * rounded
+  const abs = Math.abs(n)
+  // 极小残差（如 0.01+0.02-0.01-0.02 ≈ 1.7e-18）直接归零；
+  // 先 toFixed(8) 转成定点再缩放，避免 `${abs}e2` 拼出 "1.7e-18e2" 得到 NaN。
+  if (abs < 1e-6) return 0
+  const scaled = Number(`${abs.toFixed(8)}e2`)
+  if (!Number.isFinite(scaled)) return n
+  return sign * Number(`${Math.round(scaled)}e-2`)
 }
 
 /** '2026-10-04' → '2026-10' */

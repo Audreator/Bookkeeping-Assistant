@@ -15,7 +15,7 @@ import { Money } from '../components/Money'
 import { Page } from '../components/Page'
 import { DataError } from '../components/DataError'
 import { addDays, daysInMonthKey, formatMoney, monthKey, monthStart, todayISO } from '../lib/dates'
-import { dailyTotals, monthlyByCategory, monthTotal, topMerchants } from '../lib/stats'
+import { dailyTotals, monthlyByCategory, monthExpense, monthIncome, topMerchants } from '../lib/stats'
 
 export function Stats() {
   const txs = useTransactions()
@@ -26,9 +26,10 @@ export function Stats() {
   const byCat = useMemo(() => monthlyByCategory(list, month), [list, month])
   const daily = useMemo(() => dailyTotals(list, month), [list, month])
   const top = useMemo(() => topMerchants(list, month), [list, month])
-  const total = useMemo(() => monthTotal(list, month), [list, month])
+  const expense = useMemo(() => monthExpense(list, month), [list, month])
+  const income = useMemo(() => monthIncome(list, month), [list, month])
   const prevMonth = monthKey(addDays(monthStart(month), -1))
-  const prevTotal = useMemo(() => monthTotal(list, prevMonth), [list, prevMonth])
+  const prevExpense = useMemo(() => monthExpense(list, prevMonth), [list, prevMonth])
 
   const catMap = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
@@ -61,7 +62,7 @@ export function Stats() {
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   const canNext = month < monthKey(todayISO())
-  const diff = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null
+  const diff = prevExpense > 0 ? ((expense - prevExpense) / prevExpense) * 100 : null
 
   if (txs.error || categories.error) return <Page><DataError error={txs.error ?? categories.error}
     onRetry={() => { void txs.refetch(); void categories.refetch() }} /></Page>
@@ -91,7 +92,7 @@ export function Stats() {
         <div className="glass-card p-4">
           <div className="text-xs text-stone-400">本月支出</div>
           <div className="mt-1 text-xl font-semibold">
-            <Money value={total} />
+            <Money value={expense} />
           </div>
           {diff != null && (
             <div className={`mt-0.5 text-xs ${diff > 0 ? 'text-red-500' : 'text-stone-600'}`}>
@@ -101,9 +102,9 @@ export function Stats() {
           )}
         </div>
         <div className="glass-card p-4">
-          <div className="text-xs text-stone-400">上月支出</div>
+          <div className="text-xs text-stone-400">本月收入</div>
           <div className="mt-1 text-xl font-semibold">
-            <Money value={prevTotal} />
+            <Money value={income} />
           </div>
         </div>
       </section>
