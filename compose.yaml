@@ -1,0 +1,38 @@
+services:
+  mysql:
+    # 国内网络直连 Docker Hub 不通，经 DaoCloud 镜像源拉取；网络环境变化可改回 mysql:8.4
+    image: docker.m.daocloud.io/library/mysql:8.4
+    container_name: jizhang-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 设置}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-jizhang}
+      MYSQL_USER: ${MYSQL_USER:-jizhang}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 设置}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    ports:
+      - '127.0.0.1:3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./server/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-u${MYSQL_USER:-jizhang}',
+          '-p${MYSQL_PASSWORD}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mysql-data:

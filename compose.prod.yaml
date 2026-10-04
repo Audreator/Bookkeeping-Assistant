@@ -1,0 +1,63 @@
+services:
+  mysql:
+    image: docker.m.daocloud.io/library/mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 设置}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-jizhang}
+      MYSQL_USER: ${MYSQL_USER:-jizhang}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 设置}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-u${MYSQL_USER:-jizhang}',
+          '-p${MYSQL_PASSWORD}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: mysql://${MYSQL_USER:-jizhang}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-jizhang}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - '8787'
+
+  caddy:
+    image: docker.m.daocloud.io/library/caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  mysql-data:
+  caddy-data:
+  caddy-config:

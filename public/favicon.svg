@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>记账本</title>
+  <rect width="512" height="512" fill="#F5F5F5" />
+  <path fill="#202020" d="M174 98h163c31 0 56 25 56 56v11c-10-8-23-13-37-15v-4c0-12-9-21-21-21H180c-19 0-30 9-30 22s11 22 30 22h162c31 0 56 25 56 56v166c0 32-25 57-57 57H169c-32 0-57-25-57-57V160c0-34 28-62 62-62Z" />
+  <rect x="156" y="222" width="138" height="22" rx="11" fill="#F5F5F5" />
+  <rect x="156" y="268" width="86" height="22" rx="11" fill="#F5F5F5" />
+  <rect x="290" y="255" width="128" height="100" rx="36" fill="#F5F5F5" />
+  <path fill="#202020" d="M329 263h62c11 0 19 8 19 19v46c0 11-8 19-19 19h-62c-18 0-31-14-31-32v-20c0-18 13-32 31-32Z" />
+  <circle cx="340" cy="305" r="21" fill="#0885FA" />
+</svg>
