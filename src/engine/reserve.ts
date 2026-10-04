@@ -72,8 +72,7 @@ export function computeReserve(
       })
     }
   }
-  const reserved = round2(
-    upcoming.filter((u) => !u.paid).reduce((sum, u) => sum + u.amount, 0),
-  )
+  // 固定支出当期全部从总预算扣除，不再区分已付/未付（支付标记只用于展示，不释放预留）。
+  const reserved = round2(upcoming.reduce((sum, u) => sum + u.amount, 0))
   return { reserved, upcoming }
 }

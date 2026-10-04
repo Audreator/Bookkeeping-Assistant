@@ -72,11 +72,11 @@ describe('固定支出从当期总预算扣除', () => {
     expect(result.current.state?.periodBudget).toBe(400)
   })
 
-  it('已支付固定支出不再扣除（支付交易本身计入已花）', () => {
+  it('已支付固定支出仍从预算扣除（固定支出已从预算整体扣除，不依赖支付标记释放）', () => {
     setupWithBill({ paid: true })
     const { result } = renderHook(useBudgetState)
-    expect(result.current.reserve.reserved).toBe(0)
-    expect(result.current.state?.periodBudget).toBe(1000)
+    expect(result.current.reserve.reserved).toBe(600)
+    expect(result.current.state?.periodBudget).toBe(400)
   })
 
   it('关闭预留设置时不扣除', () => {

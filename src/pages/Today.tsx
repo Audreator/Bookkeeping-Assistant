@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBillMutations, useCategories, useTransactions } from '../api/hooks'
+import { useCategories, useTransactions } from '../api/hooks'
 import type { Tx } from '../api/types'
 import { Money } from '../components/Money'
 import { Page } from '../components/Page'
@@ -8,20 +8,15 @@ import { QuickAdd } from '../components/QuickAdd'
 import { TxList } from '../components/TxList'
 import { Icon } from '../components/Icon'
 import { DataError } from '../components/DataError'
-import { formatCN, formatMoney, toLocalTime } from '../lib/dates'
+import { formatCN, formatMoney } from '../lib/dates'
 import { useBudgetState } from '../state/useBudgetState'
 
-const currentLocalTime = () => toLocalTime(new Date())
-
 export function Today() {
-  const { state, reserve, reserveEnabled, loading, today, error, retry } = useBudgetState()
+  const { state, loading, today, error, retry } = useBudgetState()
   const txs = useTransactions()
   const categories = useCategories()
-  const { payBillWithTransaction } = useBillMutations()
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Tx | null>(null)
-  const [bookingId, setBookingId] = useState<number | null>(null)
-  const [bookingError, setBookingError] = useState('')
 
   if (error || categories.error) return <Page><DataError error={error ?? categories.error} onRetry={() => { retry(); void categories.refetch() }} /></Page>
 
@@ -34,39 +29,13 @@ export function Today() {
   }
   if (!state) return <Page><DataError error={new Error('未找到初始预算，请检查服务初始化设置')} onRetry={retry} /></Page>
 
-  const reserved = reserveEnabled ? reserve.reserved : 0
-  // 固定支出已从当期总预算中预先扣除并重算每日额度，此处直接用引擎结果。
+  // 固定支出已从当期总预算中预先扣除并重算每日额度，首页不展示固定支出明细。
   const displayValue = state.availableToday
   const overspent = displayValue < 0
-  const mainLabel = overspent
-    ? '今日超支'
-    : reserveEnabled && reserved > 0
-      ? '今日可花（固定支出已从本期预算扣除）'
-      : '今日可花'
+  const mainLabel = overspent ? '今日超支' : '今日可花'
   const progress = state.periodBudget > 0 ? state.spentInPeriod / state.periodBudget : 0
   const spentToday = state.days.find((d) => d.date === today)?.spent ?? 0
   const recent = txs.data ?? []
-  const dueBills = reserve.upcoming.filter((u) => !u.paid)
-
-  const bookBill = async (billId: number, dueDate: string) => {
-    if (bookingId !== null) return
-    const bill = reserve.upcoming.find((u) => u.billId === billId)
-    if (!bill) return
-    setBookingId(billId)
-    setBookingError('')
-    try {
-      await payBillWithTransaction.mutateAsync({
-        billId,
-        periodKey: dueDate,
-        paidAt: today,
-        occurredTime: currentLocalTime(),
-      })
-    } catch (err) {
-      setBookingError(err instanceof Error ? err.message : '固定支出记账失败，请检查账本后重试')
-    } finally {
-      setBookingId(null)
-    }
-  }
 
   return (
     <Page>
@@ -82,11 +51,6 @@ export function Today() {
         >
           {overspent ? `¥${formatMoney(Math.abs(displayValue))}` : <Money value={displayValue} />}
         </div>
-        {reserveEnabled && reserved > 0 && (
-          <div className="mt-1 text-xs text-stone-500">
-            已预留固定支出 ¥{formatMoney(reserved)}
-          </div>
-        )}
 
         <div className="mt-5 flex items-center gap-5">
           <ProgressRing progress={progress} size={100} stroke={7}>
@@ -119,35 +83,6 @@ export function Today() {
           </div>
         </div>
       </section>
-
-      {bookingError && <p role="alert" className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-500">{bookingError}</p>}
-
-      {dueBills.length > 0 && (
-        <section className="glass-card mt-4 p-4">
-          <h2 className="mb-2 text-sm font-medium text-stone-600">固定支出提醒</h2>
-          <ul className="divide-y divide-stone-100">
-            {dueBills.map((u) => (
-              <li key={`${u.billId}-${u.dueDate}`} className="flex items-center gap-2 py-2">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{u.name}</span>
-                  <span className={`text-xs ${u.dueSoon ? 'text-stone-700' : 'text-stone-400'}`}>
-                    {u.dueDate} 到期{u.dueSoon ? ' · 即将到期' : ''}
-                  </span>
-                </span>
-                <Money value={u.amount} className="text-sm" />
-                <button
-                  type="button"
-                  disabled={bookingId !== null}
-                  onClick={() => void bookBill(u.billId, u.dueDate)}
-                  className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 disabled:opacity-50"
-                >
-                  {bookingId === u.billId ? '记账中…' : '记一笔'}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <section className="mt-6">
         <div className="mb-2 flex items-center justify-between">

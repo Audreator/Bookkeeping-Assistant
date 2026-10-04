@@ -75,7 +75,7 @@ export function useBudgetState() {
     overrides,
   }), [engineEvents, engineTxs, today, carryover, overrides])
 
-  // 两遍计算：第一遍确定当期边界，算出未付固定支出后第二遍从当期总预算中扣除。
+  // 两遍计算：第一遍确定当期边界，算出当期固定支出后第二遍从当期总预算中扣除。
   const baseState = useMemo(() => {
     if (loading || error || engineEvents.length === 0) return null
     return computeBudgetState(engineInput)

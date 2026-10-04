@@ -36,9 +36,9 @@ describe('computeReserve', () => {
     })
   })
 
-  it('已支付（periodKey = 到期日）不计入', () => {
+  it('已支付（periodKey = 到期日）仍计入预留（固定支出已从预算整体扣除，不依赖支付标记释放）', () => {
     const r = computeReserve([bill()], [payment()], '2026-10-01', '2026-10-31', '2026-10-10')
-    expect(r.reserved).toBe(0)
+    expect(r.reserved).toBe(3000)
     expect(r.upcoming[0].paid).toBe(true)
   })
 
