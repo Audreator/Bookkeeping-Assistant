@@ -92,6 +92,15 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
     expect(s.remainingInPeriod).toBe(3000)
   })
 
+  it('退款超过本期支出时保留负净已花，已入账现金完整恢复可花与剩余预算', () => {
+    const s = run(OCT_3100, [tx('2026-10-01', 50), tx('2026-10-02', 150, { type: 'refund' })], '2026-10-02')
+    expect(s.spentInPeriod).toBe(-100)
+    expect(s.availableToday).toBe(300)
+    expect(s.remainingInPeriod).toBe(3200)
+    expect(s.days[1].spent).toBe(-150)
+    expect(s.days[30].available).toBe(3200)
+  })
+
   it('未确认（pending）交易不计入', () => {
     const s = run(
       OCT_3100,

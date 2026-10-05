@@ -29,6 +29,34 @@ describe('固定分摊的现金预算守恒', () => {
     expect(state.remainingInPeriod).toBe(2200)
     expect(txs[0].amount).toBe(900)
   })
+  it('回归：首页负净额来自普通入账超日常支出，固定款只剔除一次且现金预算守恒', () => {
+    const txs = [expense(1, 900), expense(2, 17.23), { ...expense(3, 150), type: 'refund' as const }]
+    const allocations = [allocation(1, 1, 1, 800), allocation(2, 1, 2, 50)]
+    const reserve = computeReserve(bills, [], start, end, today, { allocations, transactions: txs })
+    const state = computeBudgetState({ events: [event],
+      transactions: fixedBudgetTransactions(txs, allocations, start, today), today, carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: start, amount: reserve.reserved } })
+    const cashState = computeBudgetState({ events: [event],
+      transactions: txs.map(t => ({ ...t, id: String(t.id) })), today, carryoverAcrossPeriod: false })
+    expect(reserve.reserved).toBe(850)
+    expect(state.spentInPeriod).toBe(-82.77)
+    expect(state.periodBudget).toBe(2250)
+    expect(state.remainingInPeriod).toBe(2332.77)
+    expect(state.remainingInPeriod).toBe(cashState.remainingInPeriod)
+    expect(txs.map(t => t.amount)).toEqual([900, 17.23, 150])
+  })
+  it('固定退款恢复固定计划未付余额，不能被重复计为日常入账', () => {
+    const txs = [expense(1, 850), { ...expense(2, 100), type: 'refund' as const }]
+    const allocations = [allocation(1, 1, 1, 800), allocation(2, 1, 2, 50), allocation(3, 2, 1, 100)]
+    const reserve = computeReserve(bills, [], start, end, today, { allocations, transactions: txs })
+    const state = computeBudgetState({ events: [event],
+      transactions: fixedBudgetTransactions(txs, allocations, start, today), today, carryoverAcrossPeriod: false,
+      fixedReserve: { periodStart: start, amount: reserve.reserved } })
+    expect(reserve.reserved).toBe(850)
+    expect(reserve.upcoming[0].remainingAmount).toBe(100)
+    expect(state.spentInPeriod).toBe(0)
+    expect(state.remainingInPeriod).toBe(2250)
+  })
   it('分次支付和0.1+0.2按分计算；只付部分仍预留余额', () => {
     const txs = [expense(1, 400), expense(2, 200)]
     const allocations = [allocation(1, 1, 1, 400), allocation(2, 2, 1, 200)]

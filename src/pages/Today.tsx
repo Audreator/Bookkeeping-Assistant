@@ -9,6 +9,7 @@ import { TxList } from '../components/TxList'
 import { Icon } from '../components/Icon'
 import { DataError } from '../components/DataError'
 import { formatCN, formatMoney } from '../lib/dates'
+import { computeBudgetProgress } from '../lib/budgetProgress'
 import { useBudgetState } from '../state/useBudgetState'
 
 export function Today() {
@@ -33,8 +34,9 @@ export function Today() {
   const displayValue = state.availableToday
   const overspent = displayValue < 0
   const mainLabel = overspent ? '今日超支' : '今日可花'
-  const progress = state.periodBudget > 0 ? state.spentInPeriod / state.periodBudget : 0
+  const period = computeBudgetProgress(state.spentInPeriod, state.periodBudget)
   const spentToday = state.days.find((d) => d.date === today)?.spent ?? 0
+  const daily = computeBudgetProgress(spentToday, state.periodBudget)
   const recent = txs.data ?? []
 
   return (
@@ -53,20 +55,28 @@ export function Today() {
         </div>
 
         <div className="mt-5 flex items-center gap-5">
-          <ProgressRing progress={progress} size={100} stroke={7}>
+          <ProgressRing progress={period.progress} size={100} stroke={7}>
             <span className="text-xs text-stone-400">{reserveEnabled ? '本期日常' : '本期已花'}</span>
             <span className="text-lg font-medium">
-              {Math.round(progress * 100)}%
+              {period.budgetUnavailable ? '暂无额度' : `${period.percentage}%`}
             </span>
           </ProgressRing>
-          <div className="min-w-0 flex-1"><div className="text-xs text-stone-500">{state.mode === 'month' ? '本月' : '本周'}{reserveEnabled ? '日常预算' : '预算'}进度</div><p className="mt-1 text-sm font-medium"><Money value={state.spentInPeriod} /> <span className="font-normal text-stone-500">已使用</span></p><p className="mt-1 text-[11px] text-stone-500">{state.periodStart.slice(5)} 至 {state.periodEnd.slice(5)}</p></div>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs text-stone-500">{state.mode === 'month' ? '本月' : '本周'}{reserveEnabled ? '日常预算' : '预算'}进度</div>
+            <p className="mt-1 text-sm font-medium">
+              {period.netInflow > 0
+                ? <><span className="font-normal text-stone-500">本期净入账</span> <Money value={period.netInflow} /></>
+                : <><Money value={period.used} /> <span className="font-normal text-stone-500">已使用</span></>}
+            </p>
+            <p className="mt-1 text-[11px] text-stone-500">{state.periodStart.slice(5)} 至 {state.periodEnd.slice(5)}</p>
+          </div>
         </div>
 
         <div className="hero-metrics grid w-full grid-cols-3 gap-2 text-center">
           <div>
-            <div className="text-xs text-stone-400">{reserveEnabled ? '今日日常' : '今日已花'}</div>
+            <div className="text-xs text-stone-400">{daily.netInflow > 0 ? '今日净入账' : reserveEnabled ? '今日日常' : '今日已花'}</div>
             <div className="mt-0.5 text-sm font-medium">
-              <Money value={spentToday} />
+              <Money value={daily.netInflow > 0 ? daily.netInflow : daily.used} />
             </div>
           </div>
           <div>

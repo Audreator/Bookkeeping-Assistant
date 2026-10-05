@@ -59,6 +59,7 @@ export interface BudgetState {
   pool: number
   availableToday: number
   issuedInPeriod: number
+  /** 净已花 = 纳入预算的支出 − 退款/收入，可为负；展示进度需另行解释净入账。 */
   spentInPeriod: number
   remainingInPeriod: number
   /** 单独预算是否可行：存在其他天被压到负额度时为 false（此时才允许修改已设的天） */

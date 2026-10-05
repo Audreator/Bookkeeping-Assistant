@@ -1,10 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>记账本</title>
-  <rect width="512" height="512" fill="#F5F5F5" />
-  <path fill="#202020" d="M174 98h163c31 0 56 25 56 56v11c-10-8-23-13-37-15v-4c0-12-9-21-21-21H180c-19 0-30 9-30 22s11 22 30 22h162c31 0 56 25 56 56v166c0 32-25 57-57 57H169c-32 0-57-25-57-57V160c0-34 28-62 62-62Z" />
-  <rect x="156" y="222" width="138" height="22" rx="11" fill="#F5F5F5" />
-  <rect x="156" y="268" width="86" height="22" rx="11" fill="#F5F5F5" />
-  <rect x="290" y="255" width="128" height="100" rx="36" fill="#F5F5F5" />
-  <path fill="#202020" d="M329 263h62c11 0 19 8 19 19v46c0 11-8 19-19 19h-62c-18 0-31-14-31-32v-20c0-18 13-32 31-32Z" />
-  <circle cx="340" cy="305" r="21" fill="#0885FA" />
+  <desc>深灰玻璃账本与蓝色新增符号，浅灰不透明背景。</desc>
+  <defs>
+    <linearGradient id="ledger" x1="154" y1="112" x2="352" y2="401" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#525257" />
+      <stop offset=".46" stop-color="#303034" />
+      <stop offset="1" stop-color="#202023" />
+    </linearGradient>
+    <linearGradient id="ledgerSheen" x1="200" y1="112" x2="276" y2="319" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".24" />
+      <stop offset=".58" stop-color="#FFFFFF" stop-opacity=".04" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="ledgerRim" x1="152" y1="116" x2="356" y2="397" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".8" />
+      <stop offset=".46" stop-color="#FFFFFF" stop-opacity=".12" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity=".3" />
+    </linearGradient>
+    <linearGradient id="blueLens" x1="295" y1="286" x2="366" y2="387" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#36A3FF" />
+      <stop offset=".44" stop-color="#0885FA" />
+      <stop offset="1" stop-color="#0871DC" />
+    </linearGradient>
+    <linearGradient id="lensSheen" x1="319" y1="278" x2="346" y2="366" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".5" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+    <clipPath id="ledgerClip">
+      <rect x="130" y="110" width="246" height="292" rx="50" />
+    </clipPath>
+    <clipPath id="lensClip">
+      <circle cx="330" cy="337" r="60" />
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" fill="#F3F3F3" />
+  <rect x="130" y="110" width="246" height="292" rx="50" fill="url(#ledger)" />
+  <g clip-path="url(#ledgerClip)">
+    <path d="M130 110h246v85c-85 31-154 20-246 81Z" fill="url(#ledgerSheen)" />
+    <path d="M158 365V147" stroke="#FFFFFF" stroke-opacity=".28" stroke-width="9" stroke-linecap="round" />
+    <path d="M197 181h117M197 227h82M197 273h55" stroke="#FFFFFF" stroke-opacity=".94" stroke-width="14" stroke-linecap="round" />
+  </g>
+  <rect x="131.5" y="111.5" width="243" height="289" rx="48.5" fill="none" stroke="url(#ledgerRim)" stroke-width="3" />
+  <circle cx="330" cy="337" r="64" fill="#F3F3F3" />
+  <circle cx="330" cy="337" r="60" fill="url(#blueLens)" />
+  <g clip-path="url(#lensClip)">
+    <path d="M268 278h124v50c-44-16-81-13-124 12Z" fill="url(#lensSheen)" />
+  </g>
+  <circle cx="330" cy="337" r="58.5" fill="none" stroke="#FFFFFF" stroke-opacity=".44" stroke-width="3" />
+  <path d="M307 337h46M330 314v46" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" />
 </svg>

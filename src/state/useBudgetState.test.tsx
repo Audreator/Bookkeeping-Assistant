@@ -103,4 +103,25 @@ describe('固定支出从当期总预算扣除', () => {
     expect(result.current.state?.spentInPeriod).toBe(650)
     expect(result.current.state?.remainingInPeriod).toBe(350)
   })
+
+  it('日常入账超过日常支出时保留现金回补，固定分摊不会混入日常净额', () => {
+    setupWithBill()
+    queries.events.data = [{ id: 1, at: currentMonthStart(), mode: 'month', monthBudget: 3100,
+      weekBudgetOverride: null, cycleStartDay: 1, weekStartsOn: 1, note: null, createdAt: 'x' }]
+    queries.transactions.data = [
+      { id: 1, type: 'expense', amount: 650, occurredAt: currentMonthStart(), status: 'confirmed' },
+      { id: 2, type: 'expense', amount: 17.23, occurredAt: currentMonthStart(), status: 'confirmed' },
+      { id: 3, type: 'refund', amount: 150, occurredAt: currentMonthStart(), status: 'confirmed' },
+    ]
+    const data = queries.bills.data as { allocations?: unknown[] }
+    data.allocations = [{ id: 1, transactionId: 1, billId: 1, periodKey: currentMonthDueDate(), amount: 600 }]
+    const { result, rerender } = renderHook(useBudgetState)
+    expect(result.current.reserve.reserved).toBe(600)
+    expect(result.current.state?.spentInPeriod).toBe(-82.77)
+    expect(result.current.state?.remainingInPeriod).toBe(2582.77)
+    queries.settings.data = { reserveEnabled: false }
+    rerender()
+    expect(result.current.state?.spentInPeriod).toBe(517.23)
+    expect(result.current.state?.remainingInPeriod).toBe(2582.77)
+  })
 })

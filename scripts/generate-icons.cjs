@@ -26,6 +26,6 @@ async function main() {
   header.writeUInt32LE(22, 18)
   await fs.writeFile('public/favicon.ico', Buffer.concat([header, png]))
   await fs.copyFile(logo, 'public/favicon.svg')
-  console.log('Generated opaque flat-color home-screen icons: 64, 180, 192, 512, maskable, favicon')
+  console.log('已生成不透明背景的液态玻璃图标：64、180、192、512、遮罩图标与网站图标')
 }
 main().catch((error) => { console.error(error); process.exitCode = 1 })

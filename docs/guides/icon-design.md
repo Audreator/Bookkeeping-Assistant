@@ -1,11 +1,15 @@
 # 主屏幕图标维护
 
-最终源文件为 `public/logo.svg`，三个纯色：`#F5F5F5` 背景、`#202020` 账本、`#0885FA` 点缀。没有渐变、纹理、阴影或拟物材质。`node scripts/generate-icons.cjs` 使用当前依赖链里的 sharp 生成 PNG 与 ICO；Apple 图标 180×180，PWA 图标 64/192/512，maskable 512，favicon 32。重要形状预留主屏幕圆角/遮罩空间，图标为不透明背景。
+最终源文件为 `public/logo.svg`。图形由圆角账本、三条记录线和右下方蓝色「＋」组成；书脊与记录线保留记账识别，蓝色镜片表示新增一笔。主体使用黑白灰，强调色为 `#0885FA`，在同一蓝色色相内以轻微明暗渐变表现玻璃折光。
 
-制作模式：内置 imagegen 构思与 2D 变体，再用 SVG 纯色路径定稿，保证所有尺寸的颜色与边缘可维护。最终 SVG 与 PNG 放在 `public/`，没有引用 Codex 默认生成目录中的文件。概念参考保存在本机忽略目录 `.superpowers/logo-flat-concept.png`。
+当前设计采用二维 SVG 图形：中性深灰账本、透明白色高光与细边缘反光。高光被裁剪在账本和蓝色镜片内部，不依赖照片、纹理、透视或立体钱包。所有内容均由路径、圆形、圆角矩形和 SVG 渐变构成，便于维护与缩放；没有外部图片、字体或滤镜依赖。早期纯色方案和概念图只作历史参考，当前源文件为液态玻璃版本。
 
-2D 变体的完整提示词：
+画布为 512×512，`#F3F3F3` 不透明中性背景覆盖全画布，SVG 内的透明度仅用于叠加高光。PNG 导出仍具有完整背景，避免主屏幕图标出现黑底。平台负责主屏幕圆角与遮罩，源文件不预先裁切外框。
 
-> Edit the reference into a completely flat 2D solid-color app logo for 记账本. Preserve only the broad idea of a compact centered ledger/wallet with two entry lines and one small blue accent. Redraw as a clean modern vector-like silhouette with smooth geometric curves: graphite black ledger shape, white short entry lines, one small #0885FA blue closure tab. Opaque single solid light-gray #F5F5F5 background filling the entire square. Absolutely flat fills, absolutely NO gradients, NO shadows, NO highlights, NO bevels, NO metallic material, NO leather texture, NO glass, NO depth, NO perspective, NO photorealism, NO coin/currency symbols/text/watermark. One centered symbol, crisp edges, meaningful elements safely within central 65% region. It must look like a restrained premium 2D icon with solid black white gray and a single electric-blue accent, recognizable at very small home-screen sizes.
+账本范围为 `x=130…376`、`y=110…402`，蓝色镜片中心为 `(330, 337)`、半径 60；用于分开图形的背景圆半径为 64。重要图形全部位于画布中心半径 190 以内，留在 maskable 图标中央半径 204.8 的安全圆内。记录线与「＋」使用 14 像素圆头线条，在小图标上仍保留清晰结构；高光只作细节，不承担识别信息。
+
+`node scripts/generate-icons.cjs` 使用当前依赖链里的 sharp，从同一个源文件生成 PNG 与 ICO，并同步 `favicon.svg`。Apple 图标为 180×180，PWA 图标为 64/192/512，maskable 图标为 512，favicon 为 32。更新 SVG 后必须重新生成图标，避免桌面入口与页面品牌不同步。
+
+本轮先更新 SVG、favicon SVG 和生成脚本文案；PNG/ICO 再生成、生产构建、服务重启与真机主屏幕效果验证分别由本轮实施记录登记，源文件更新不代表这些步骤已完成。图标本身无需修改预算、交易或收单逻辑。
 
 更新图标后重新构建并重启。Apple 图标链接版本参数在 `index.html`；旧主屏幕入口仍有缓存时从 Safari 重新添加即可，账目保存在服务器不会因移除入口而删除。
