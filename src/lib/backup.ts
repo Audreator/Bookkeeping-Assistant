@@ -1,3 +1,5 @@
+import type { FixedAllocationInput } from '../api/types'
+
 export interface BackupData {
   categories: unknown[]
   transactions: unknown[]
@@ -5,6 +7,7 @@ export interface BackupData {
   bills: unknown[]
   payments: unknown[]
   overrides?: unknown[]
+  allocations?: unknown[]
   settings: Record<string, unknown>
 }
 
@@ -16,6 +19,29 @@ export interface BackupV1 {
 
 export function buildBackup(data: BackupData): BackupV1 {
   return { version: 1, exportedAt: new Date().toISOString(), data }
+}
+
+/** 全部交易/账单恢复后映射分摊，支出先于退款以满足净支付校验。 */
+export function mapBackupAllocations(
+  data: BackupData,
+  txMap: Map<number, number>,
+  billMap: Map<number, number>,
+): Array<{ transactionId: number; allocations: FixedAllocationInput[] }> {
+  const types = new Map((data.transactions as Array<{ id?: number; type?: string }>)
+    .map((tx) => [tx.id, tx.type]))
+  const grouped = new Map<number, FixedAllocationInput[]>()
+  for (const raw of (data.allocations ?? []) as Array<{
+    transactionId: number; billId: number; periodKey: string; amount: number
+  }>) {
+    const transactionId = txMap.get(raw.transactionId)
+    const billId = billMap.get(raw.billId)
+    if (transactionId == null || billId == null) throw new Error('固定支出分摊关联缺失，备份未能完整恢复')
+    const rows = grouped.get(raw.transactionId) ?? []
+    rows.push({ billId, periodKey: raw.periodKey, amount: raw.amount })
+    grouped.set(raw.transactionId, rows)
+  }
+  return [...grouped].sort(([a], [b]) => Number(types.get(a) === 'refund') - Number(types.get(b) === 'refund'))
+    .map(([id, allocations]) => ({ transactionId: txMap.get(id)!, allocations }))
 }
 
 const ITERATIONS = 150_000

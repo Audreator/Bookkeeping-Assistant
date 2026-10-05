@@ -71,6 +71,10 @@ export function TxList({
                         <span aria-hidden="true">·</span>
                         <span>{{ manual: '手动', ocr: '快捷指令', import: '账单导入', 'bank-email': '银行邮件' }[tx.source]}</span>
                       </span>
+                      {Boolean(tx.fixedAllocations?.length) && <span className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-brand-700">
+                        <span className="rounded-md bg-brand-50 px-1.5 py-0.5">固定{tx.type === 'refund' ? '退款' : '支出'}</span>
+                        <span>已分摊 ¥{round2(tx.fixedAllocations!.reduce((sum, a) => sum + a.amount, 0)).toFixed(2)} · 日常 ¥{round2(tx.amount - tx.fixedAllocations!.reduce((sum, a) => sum + a.amount, 0)).toFixed(2)}</span>
+                      </span>}
                     </span>
                     <Money
                       value={tx.type === 'refund' ? tx.amount : -tx.amount}

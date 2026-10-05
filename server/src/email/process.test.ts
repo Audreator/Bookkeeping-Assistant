@@ -12,6 +12,7 @@ let db: ReturnType<typeof createDb>['db']
 let userId = 0
 
 const TABLES = [
+  'bill_allocations',
   'email_receipts',
   'bill_payments',
   'transactions',

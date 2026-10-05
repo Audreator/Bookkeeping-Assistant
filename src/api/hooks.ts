@@ -8,6 +8,8 @@ import type {
   BudgetEventDTO,
   Category,
   DayOverride,
+  FixedAllocation,
+  FixedAllocationInput,
   SettingsMap,
   Tx,
   TxSource,
@@ -59,7 +61,9 @@ export function useEvents() {
 export function useBillsData() {
   return useQuery({
     queryKey: qk.bills,
-    queryFn: () => api.get<{ bills: Bill[]; payments: BillPayment[] }>('/api/bills'),
+    queryFn: () => api.get<{ bills: Bill[]; payments: BillPayment[]; allocations: FixedAllocation[] }>('/api/bills'),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -101,7 +105,7 @@ export interface TxInput {
 
 export function useTransactionMutations() {
   const invalidate = useInvalidator()
-  const fresh = () => invalidate([qk.transactions])
+  const fresh = () => invalidate([qk.transactions, qk.bills])
 
   const create = useMutation({
     mutationFn: (input: TxInput) =>
@@ -118,6 +122,16 @@ export function useTransactionMutations() {
     onSuccess: () => invalidate([qk.transactions, qk.bills]),
   })
   return { create, update, remove }
+}
+
+export function useFixedAllocationMutation() {
+  const invalidate = useInvalidator()
+  return useMutation({
+    mutationFn: ({ transactionId, allocations }: { transactionId: number; allocations: FixedAllocationInput[] }) =>
+      api.put<{ allocations: FixedAllocation[] }>(`/api/transactions/${transactionId}/fixed-allocations`, { allocations })
+        .then((r) => r.allocations),
+    onSuccess: () => invalidate([qk.transactions, qk.bills]),
+  })
 }
 
 export function useCategoryMutations() {
@@ -150,7 +164,7 @@ export function useCreateEvent() {
 
 export function useBillMutations() {
   const invalidate = useInvalidator()
-  const fresh = () => invalidate([qk.bills])
+  const fresh = () => invalidate([qk.bills, qk.transactions])
   const createBill = useMutation({
     mutationFn: (input: Partial<Bill>) => api.post('/api/bills', input),
     onSuccess: fresh,

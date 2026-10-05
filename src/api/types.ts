@@ -16,6 +16,17 @@ export interface Category {
 export type TxType = 'expense' | 'refund'
 export type TxSource = 'manual' | 'ocr' | 'import' | 'bank-email'
 
+export interface FixedAllocation {
+  id: number
+  transactionId: number
+  billId: number
+  /** 对应固定账单到期日 YYYY-MM-DD。 */
+  periodKey: string
+  amount: number
+}
+
+export type FixedAllocationInput = Pick<FixedAllocation, 'billId' | 'periodKey' | 'amount'>
+
 export interface Tx {
   id: number
   type: TxType
@@ -30,6 +41,7 @@ export interface Tx {
   refundOfId: number | null
   status: 'pending' | 'confirmed'
   createdAt: string
+  fixedAllocations?: FixedAllocation[]
 }
 
 export interface BudgetEventDTO {

@@ -78,6 +78,7 @@ export interface EngineInput {
   /**
    * 固定支出预留：从 periodStart 匹配的当期总预算中预先扣除（金额），
    * 扣除后其余日期的每日发放自动按余额重算；不匹配任何期间时忽略。
+   * 历史固定退款可使金额为负，从而归还当前预算。
    */
   fixedReserve?: { periodStart: string; amount: number }
 }

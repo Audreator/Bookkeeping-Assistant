@@ -136,6 +136,26 @@ export const billPayments = mysqlTable(
   (t) => [uniqueIndex('uq_billpay').on(t.userId, t.billId, t.periodKey)],
 )
 
+/** 真实流水的固定支出部分；原交易金额与统计始终保持不变。 */
+export const billAllocations = mysqlTable(
+  'bill_allocations',
+  {
+    id: bigint('id', { mode: 'number', unsigned: true }).autoincrement().primaryKey(),
+    userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    transactionId: bigint('transaction_id', { mode: 'number', unsigned: true }).notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    billId: bigint('bill_id', { mode: 'number', unsigned: true }).notNull()
+      .references(() => bills.id, { onDelete: 'restrict' }),
+    periodKey: date('period_key', { mode: 'string' }).notNull(),
+    amount: decimal('amount', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('uq_bill_allocation').on(t.userId, t.transactionId, t.billId, t.periodKey),
+    index('idx_bill_allocation_occurrence').on(t.userId, t.billId, t.periodKey),
+  ],
+)
+
 export const emailReceipts = mysqlTable(
   'email_receipts',
   {

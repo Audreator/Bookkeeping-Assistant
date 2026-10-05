@@ -18,6 +18,7 @@ let billA = 0
 let payA = 0
 
 const TABLES = [
+  'bill_allocations',
   'email_receipts',
   'bill_payments',
   'transactions',
@@ -367,7 +368,7 @@ describe('固定支出 API', () => {
     expect(again.statusCode).toBe(404)
   })
 
-  it('删除已有支付标记的账单会清除标记并保留原交易', async () => {
+  it('有关联流水的账单需先撤销分摊才能删除，删除后保留原交易', async () => {
     const created = await app.inject({
       method: 'POST',
       url: '/api/bills',
@@ -388,6 +389,10 @@ describe('固定支出 API', () => {
     const before = await app.inject({ method: 'GET', url: '/api/bills', headers: auth(tokenA) })
     expect(before.json().payments.some((payment: { id: number }) => payment.id === paymentId)).toBe(true)
 
+    const denied = await app.inject({ method: 'DELETE', url: `/api/bills/${billId}`, headers: auth(tokenA) })
+    expect(denied.statusCode).toBe(409)
+    const unlinked = await app.inject({ method: 'PUT', url: `/api/transactions/${originalTransaction.id}/fixed-allocations`, headers: auth(tokenA), payload: { allocations: [] } })
+    expect(unlinked.statusCode).toBe(200)
     const deleted = await app.inject({ method: 'DELETE', url: `/api/bills/${billId}`, headers: auth(tokenA) })
     expect(deleted.statusCode).toBe(204)
     const after = await app.inject({ method: 'GET', url: '/api/bills', headers: auth(tokenA) })
@@ -397,7 +402,7 @@ describe('固定支出 API', () => {
     expect(stalePayment.statusCode).toBe(404)
     const transactions = await app.inject({ method: 'GET', url: '/api/transactions', headers: auth(tokenA) })
     expect(transactions.json().transactions.find((transaction: { id: number }) => transaction.id === originalTransaction.id))
-      .toEqual(originalTransaction)
+      .toEqual({ ...originalTransaction, fixedAllocations: [] })
   })
 })
 

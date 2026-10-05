@@ -1,10 +1,11 @@
-import { and, desc, eq, gte, like, lt, lte, or, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, like, lt, lte, or, type SQL } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { billPayments, categories, transactions } from '../db/schema.ts'
+import { billAllocations, billPayments, categories, transactions } from '../db/schema.ts'
 import { nowDateTime, round2 } from '../util/date.ts'
 import { dateString, isDupEntry, notFound, parseId, stripUndefined, timeString } from './helpers.ts'
+import { AllocationError, allocationFailure, allocationInput, lockAllocationUser, replaceAllocations, serializeAllocation, transactionAllocations, validateAllocationBalances } from './fixed-allocations.ts'
 
 async function ensureOwned(
   app: FastifyInstance,
@@ -55,7 +56,7 @@ const querySchema = z.object({
   beforeId: z.coerce.number().int().positive().optional(),
 })
 
-export const serializeTransaction = (row: typeof transactions.$inferSelect) => ({
+export const serializeTransaction = (row: typeof transactions.$inferSelect, fixedAllocations: ReturnType<typeof serializeAllocation>[] = []) => ({
   id: row.id,
   type: row.type,
   amount: row.amount,
@@ -68,6 +69,7 @@ export const serializeTransaction = (row: typeof transactions.$inferSelect) => (
   refundOfId: row.refundOfId,
   status: row.status,
   createdAt: row.createdAt,
+  fixedAllocations,
 })
 
 export function registerTransactionRoutes(app: FastifyInstance) {
@@ -98,7 +100,15 @@ export function registerTransactionRoutes(app: FastifyInstance) {
       .where(and(...conds))
       .orderBy(...(pagination === 'id' ? [desc(transactions.id)] : [desc(transactions.occurredAt), desc(transactions.occurredTime), desc(transactions.id)]))
       .limit(limit ?? 500)
-    return { transactions: rows.map(serializeTransaction), nextCursor: pagination === 'id' && rows.length === (limit ?? 500) ? rows.at(-1)?.id ?? null : null }
+    const allocations = rows.length ? await app.db.select().from(billAllocations)
+      .where(and(eq(billAllocations.userId, uid), inArray(billAllocations.transactionId, rows.map(row => row.id)))) : []
+    const byTransaction = new Map<number, ReturnType<typeof serializeAllocation>[]>()
+    for (const allocation of allocations) {
+      const values = byTransaction.get(allocation.transactionId) ?? []
+      values.push(serializeAllocation(allocation))
+      byTransaction.set(allocation.transactionId, values)
+    }
+    return { transactions: rows.map(row => serializeTransaction(row, byTransaction.get(row.id) ?? [])), nextCursor: pagination === 'id' && rows.length === (limit ?? 500) ? rows.at(-1)?.id ?? null : null }
   })
 
   app.post('/api/transactions', async (request, reply) => {
@@ -174,27 +184,60 @@ export function registerTransactionRoutes(app: FastifyInstance) {
     if (patch.refundOfId != null && !(await ensureOwned(app, uid, 'transaction', patch.refundOfId))) {
       return notFound(reply)
     }
-    const [result] = await app.db
-      .update(transactions)
-      .set(patch)
-      .where(and(eq(transactions.userId, uid), eq(transactions.id, id)))
-    if (result.affectedRows === 0) return notFound(reply)
-    const rows = await app.db
-      .select()
-      .from(transactions)
-      .where(and(eq(transactions.userId, uid), eq(transactions.id, id)))
-    return { transaction: serializeTransaction(rows[0]) }
+    try {
+      return await app.db.transaction(async connection => {
+        await lockAllocationUser(connection, uid)
+        const owned = (await connection.select().from(transactions)
+          .where(and(eq(transactions.userId, uid), eq(transactions.id, id))).limit(1))[0]
+        if (!owned) throw new AllocationError(404, '资源不存在')
+        const allocations = await transactionAllocations(connection, uid, id)
+        if (allocations.length) {
+          if ((patch.type && patch.type !== owned.type) || (patch.status && patch.status !== owned.status)) {
+            throw new AllocationError(409, '请先撤销该流水的固定支出分摊，再修改交易类型或确认状态')
+          }
+          if (typeof patch.amount === 'number' && Math.round(patch.amount * 100) < allocations.reduce((sum, value) => sum + Math.round(value.amount * 100), 0)) {
+            throw new AllocationError(409, '流水金额不能低于已有固定支出分摊，请先调整分摊金额')
+          }
+        }
+        await connection.update(transactions).set(patch).where(and(eq(transactions.userId, uid), eq(transactions.id, id)))
+        const updated = (await connection.select().from(transactions).where(eq(transactions.id, id)))[0]
+        if (allocations.length && patch.occurredAt && patch.occurredAt !== owned.occurredAt) {
+          await validateAllocationBalances(connection, uid, id, updated.type, updated.occurredAt,
+            allocations.map(value => ({ billId: value.billId, periodKey: value.periodKey, amount: value.amount })))
+        }
+        return { transaction: serializeTransaction(updated, allocations.map(serializeAllocation)) }
+      })
+    } catch (error) { return allocationFailure(error, reply) }
+  })
+
+  app.put('/api/transactions/:id/fixed-allocations', async (request, reply) => {
+    const id = parseId((request.params as { id: string }).id)
+    if (!id) return reply.code(400).send({ error: '参数错误' })
+    const parsed = allocationInput.safeParse(request.body)
+    if (!parsed.success) return reply.code(400).send({ error: '分摊参数错误：请选择账单、真实到期日及两位小数的正金额（最多 48 项）' })
+    const uid = request.userId as number
+    try {
+      return await app.db.transaction(async connection => {
+        await lockAllocationUser(connection, uid)
+        const allocations = await replaceAllocations(connection, uid, id, parsed.data.allocations)
+        const tx = (await connection.select().from(transactions).where(eq(transactions.id, id)))[0]
+        return { allocations, transaction: serializeTransaction(tx, allocations) }
+      })
+    } catch (error) { return allocationFailure(error, reply) }
   })
 
   app.delete('/api/transactions/:id', async (request, reply) => {
     const id = parseId((request.params as { id: string }).id)
     if (!id) return reply.code(400).send({ error: '参数错误' })
     const uid = request.userId as number
+    try {
     const removed = await app.db.transaction(async (connection) => {
+      await lockAllocationUser(connection, uid)
       const owned = await connection.select({ id: transactions.id }).from(transactions)
         .where(and(eq(transactions.userId, uid), eq(transactions.id, id))).limit(1).for('update')
       if (!owned[0]) return false
-      // 删除固定支出交易也撤销已付标记，重新释放提醒与预留；退款记录仍保留但解除引用。
+      await replaceAllocations(connection, uid, id, [])
+      // 删除真实流水也撤销关联与旧支付标记；退款记录仍保留但解除引用。
       await connection.delete(billPayments).where(and(eq(billPayments.userId, uid), eq(billPayments.transactionId, id)))
       await connection.update(transactions).set({ refundOfId: null })
         .where(and(eq(transactions.userId, uid), eq(transactions.refundOfId, id)))
@@ -203,5 +246,6 @@ export function registerTransactionRoutes(app: FastifyInstance) {
     })
     if (!removed) return notFound(reply)
     return reply.code(204).send()
+    } catch (error) { return allocationFailure(error, reply) }
   })
 }

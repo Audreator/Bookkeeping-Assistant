@@ -5,6 +5,19 @@ import { TxList } from './TxList'
 
 afterEach(cleanup)
 
+it('固定支出分摊显示徽标、实际分摊与日常余额，流水仍展示原金额', () => {
+  const tx: Tx = { id: 1, type: 'expense', amount: 880, categoryId: null,
+    merchant: null, note: null, occurredAt: '2026-10-04', source: 'ocr', refundOfId: null,
+    status: 'confirmed', createdAt: 'x', fixedAllocations: [
+      { id: 1, transactionId: 1, billId: 7, periodKey: '2026-10-01', amount: 800 },
+      { id: 2, transactionId: 1, billId: 8, periodKey: '2026-10-05', amount: 50 },
+    ] }
+  render(<TxList txs={[tx]} categories={[]} />)
+  expect(screen.getByText('固定支出')).toBeTruthy()
+  expect(screen.getByText('已分摊 ¥850.00 · 日常 ¥30.00')).toBeTruthy()
+  expect(screen.getByText('-¥880.00')).toBeTruthy()
+})
+
 it('极小金额支出与退款冲减后合计不出现 NaN', () => {
   const base: Tx = { id: 1, type: 'expense', amount: 0.01, categoryId: null,
     merchant: null, note: null, occurredAt: '2026-10-05', occurredTime: '01:13:00',

@@ -75,7 +75,7 @@ export function computeBudgetState(input: EngineInput): BudgetState {
   // 固定支出预留：从匹配期间的总预算中预先扣除，其余日期的每日发放随之重算。
   const fixedReserve = input.fixedReserve
   const effectiveBudget = (cfg: Config, start: string): number =>
-    fixedReserve && fixedReserve.amount > 0 && fixedReserve.periodStart === start
+    fixedReserve && fixedReserve.periodStart === start
       ? budgetOf(cfg, start) - fixedReserve.amount
       : budgetOf(cfg, start)
 

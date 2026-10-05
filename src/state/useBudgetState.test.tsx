@@ -85,4 +85,22 @@ describe('固定支出从当期总预算扣除', () => {
     expect(result.current.reserve.reserved).toBe(600)
     expect(result.current.state?.periodBudget).toBe(1000)
   })
+
+  it('真实房租分摊免除日常双扣，关闭预留恢复现金全额扣除', () => {
+    setupWithBill()
+    const tx = { id: 1, type: 'expense', amount: 650, occurredAt: currentMonthStart(), status: 'confirmed' }
+    const allocations = [{ id: 1, transactionId: 1, billId: 1, periodKey: currentMonthDueDate(), amount: 600 }]
+    queries.transactions.data = [tx]
+    const data = queries.bills.data as { allocations?: unknown[] }
+    data.allocations = allocations
+    const { result, rerender } = renderHook(useBudgetState)
+    expect(result.current.state?.periodBudget).toBe(400)
+    expect(result.current.state?.spentInPeriod).toBe(50)
+    expect(result.current.state?.remainingInPeriod).toBe(350)
+    queries.settings.data = { reserveEnabled: false }
+    rerender()
+    expect(result.current.state?.periodBudget).toBe(1000)
+    expect(result.current.state?.spentInPeriod).toBe(650)
+    expect(result.current.state?.remainingInPeriod).toBe(350)
+  })
 })

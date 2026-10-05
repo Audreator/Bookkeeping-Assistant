@@ -40,6 +40,7 @@
 - 前端数据访问统一通过 `src/api/hooks.ts` / `client.ts`，页面不直接操作数据库；当前服务端路由使用 Drizzle，尚无 repo 层。
 - 服务端集成测试必须使用名称以 `_test` 结尾的独立测试库，不回退生产 `DATABASE_URL`；测试会清理数据。
 - 收单调用使用稳定 `eventId`，未知文本不猜支付/退款结果；真实令牌、邮件原文与备份不得提交到 Git。
+- 固定用途用 `bill_allocations` 分摊原流水，不拆成假付款；金额按分汇总，实际统计保留原额，仅当期分摊抵扣日常。关联写入/交易修改统一先锁用户行，退款按发生日期校验覆盖。旧支付标记不猜金额，备份用 `markerOnly` 恢复。
 - 每轮迭代同步更新 `docs/PROGRESS.md`、当前架构和受影响指南，分别记录自动检查、服务重启和真机验证；原始 spec/计划仅作历史背景。
 
 ## 文档索引
@@ -51,4 +52,5 @@
 - 安全模型：`docs/SECURITY.md`
 - 实施与验证记录：`docs/PROGRESS.md`
 - 收单合约：`docs/guides/ingest-api.md`
+- 固定支出分摊：`docs/guides/fixed-expenses.md`
 - 指南：`docs/guides/`

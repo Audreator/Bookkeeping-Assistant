@@ -7,7 +7,7 @@ import {
   useTransactions,
 } from '../api/hooks'
 import { computeBudgetState } from '../engine/engine'
-import { computeReserve, type ReserveResult } from '../engine/reserve'
+import { computeReserve, fixedBudgetTransactions, type ReserveResult } from '../engine/reserve'
 import type { BudgetEvent, EngineTx } from '../engine/types'
 import { todayISO } from '../lib/dates'
 
@@ -89,17 +89,19 @@ export function useBudgetState() {
       baseState.periodStart,
       baseState.periodEnd,
       today,
+      { transactions: txs.data ?? [], allocations: billsData.data?.allocations ?? [] },
     )
-  }, [baseState, billsData.data, today])
+  }, [baseState, billsData.data, txs.data, today])
 
   const state = useMemo(() => {
     if (!baseState) return null
-    if (!reserveEnabled || reserve.reserved <= 0) return baseState
+    if (!reserveEnabled) return baseState
     return computeBudgetState({
       ...engineInput,
+      transactions: fixedBudgetTransactions(txs.data ?? [], billsData.data?.allocations ?? [], baseState.periodStart, today),
       fixedReserve: { periodStart: baseState.periodStart, amount: reserve.reserved },
     })
-  }, [baseState, engineInput, reserveEnabled, reserve.reserved])
+  }, [baseState, engineInput, reserveEnabled, reserve.reserved, txs.data, billsData.data, today])
 
   return {
     state,

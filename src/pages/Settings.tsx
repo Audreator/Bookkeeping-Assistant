@@ -15,8 +15,9 @@ import type { Bill, Category, SettingsMap } from '../api/types'
 import { ImportDialog } from '../components/ImportDialog'
 import { Money } from '../components/Money'
 import { Page } from '../components/Page'
-import { buildBackup, decryptBackup, encryptBackup, type BackupData } from '../lib/backup'
-import { todayISO } from '../lib/dates'
+import { buildBackup, decryptBackup, encryptBackup, mapBackupAllocations, type BackupData } from '../lib/backup'
+import { daysInMonthKey, todayISO } from '../lib/dates'
+import { computeReserve } from '../engine/reserve'
 import { useAuth } from '../state/AuthContext'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -44,13 +45,18 @@ export function Settings() {
   const [busy, setBusy] = useState(false)
 
   const prefs: SettingsMap = settings.data ?? {}
+  const today = todayISO()
+  const month = today.slice(0, 7)
+  const monthlyBills = computeReserve(billsData.data?.bills ?? [], billsData.data?.payments ?? [],
+    `${month}-01`, `${month}-${daysInMonthKey(month)}`, today,
+    { transactions: txs.data ?? [], allocations: billsData.data?.allocations ?? [] }).upcoming
 
   const collect = async (): Promise<BackupData> => {
     const [cs, ts, es, bs, st, os] = await Promise.all([
       api.get<{ categories: Category[] }>('/api/categories'),
       fetchAllTransactions(),
       api.get<{ events: unknown[] }>('/api/events'),
-      api.get<{ bills: unknown[]; payments: unknown[] }>('/api/bills'),
+      api.get<{ bills: unknown[]; payments: unknown[]; allocations: unknown[] }>('/api/bills'),
       api.get<{ settings: SettingsMap }>('/api/settings'),
       api.get<{ overrides: unknown[] }>('/api/day-overrides'),
     ])
@@ -60,6 +66,7 @@ export function Settings() {
       events: es.events,
       bills: bs.bills,
       payments: bs.payments,
+      allocations: bs.allocations,
       settings: st.settings,
       overrides: os.overrides,
     }).data
@@ -194,6 +201,10 @@ export function Settings() {
         await api.put('/api/day-overrides', { date: raw.date, amount: raw.amount, note: raw.note ?? null })
       }
 
+      for (const group of mapBackupAllocations(data, txMap, billMap)) {
+        await api.put(`/api/transactions/${group.transactionId}/fixed-allocations`, { allocations: group.allocations })
+      }
+
       for (const raw of (data.payments ?? []) as Array<{
         billId: number
         periodKey: string
@@ -207,6 +218,8 @@ export function Settings() {
           periodKey: raw.periodKey,
           paidAt: raw.paidAt,
           transactionId: raw.transactionId != null ? (txMap.get(raw.transactionId) ?? null) : null,
+          // 支付标记未记录实际分摊金额；新旧备份都只恢复标记，不猜测整计划金额。
+          markerOnly: true,
         })
       }
 
@@ -320,7 +333,7 @@ export function Settings() {
         <label className={rowClass}>
           <span>
             <span className="block text-sm">扣除固定支出预留</span>
-            <span className="text-xs text-stone-400">从本期总预算中扣掉当期账单，每日额度按余额重算</span>
+            <span className="text-xs text-stone-400">预留未付账单并覆盖固定支付，避免日常预算重复扣除</span>
           </span>
           <input
             type="checkbox"
@@ -381,11 +394,14 @@ export function Settings() {
         </button>
       </h2>
       <section className={sectionClass}>
+        <p className="border-b border-stone-100 px-4 py-3 text-xs leading-relaxed text-stone-500">支付后在「账本」点开流水，选择「分摊到固定支出」。一笔可分摊房租、水费，也可分次付；流水与统计保留实际金额。旧支付标记仅用于展示，预算按实际分摊金额计算。</p>
         {(billsData.data?.bills ?? []).length === 0 ? (
           <p className="px-4 py-4 text-sm text-stone-400">暂无固定支出（房租、订阅等）</p>
         ) : (
           <ul className="divide-y divide-stone-100">
-            {(billsData.data?.bills ?? []).map((bill) => (
+            {(billsData.data?.bills ?? []).map((bill) => {
+              const progress = monthlyBills.find((item) => item.billId === bill.id)
+              return (
               <li key={bill.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void editBill(bill)}>
                   <span className="block truncate">
@@ -395,21 +411,32 @@ export function Settings() {
                   <span className="text-xs text-stone-400">
                     每月 {bill.dueDay} 号 · 提前 {bill.remindDaysBefore} 天提醒
                   </span>
+                  {progress && <span className={`mt-1 block text-xs ${progress.paid ? 'text-brand-700' : 'text-stone-500'}`}>
+                    本月到期 · {progress.paid && progress.paidAmount === 0 && progress.remainingAmount > 0
+                      ? '已标记支付 · 金额未关联'
+                      : `${progress.paid ? '已付' : progress.paidAmount > 0 ? '部分支付' : '未付'} ¥${progress.paidAmount.toFixed(2)}${!progress.paid ? ` · 待付 ¥${progress.remainingAmount.toFixed(2)}` : ''}`}
+                  </span>}
                 </button>
                 <Money value={bill.amount} className="mr-2" />
+                <button type="button" aria-label={`${bill.active ? '停用' : '启用'}固定支出 ${bill.name}`}
+                  className="mr-2 shrink-0 text-xs text-brand-700" onClick={() => billMut.updateBill.mutate({ id: bill.id, patch: { active: !bill.active } }, {
+                    onError: (err) => setError(err instanceof Error ? err.message : '账单状态修改失败'),
+                  })}>{bill.active ? '停用' : '启用'}</button>
                 <button
                   type="button"
                   aria-label={`删除固定支出 ${bill.name}`}
                   className="text-xs text-stone-300"
                   onClick={() => {
                     if (!window.confirm(`删除固定支出「${bill.name}」？`)) return
-                    billMut.removeBill.mutate(bill.id)
+                    billMut.removeBill.mutate(bill.id, {
+                      onError: (err) => setError(err instanceof Error ? err.message : '删除失败'),
+                    })
                   }}
                 >
                   ✕
                 </button>
               </li>
-            ))}
+            )})}
           </ul>
         )}
       </section>

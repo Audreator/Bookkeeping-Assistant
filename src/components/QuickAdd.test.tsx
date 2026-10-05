@@ -6,6 +6,8 @@ import { QuickAdd } from './QuickAdd'
 const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), remove: vi.fn() }))
 vi.mock('../api/hooks', () => ({
   useCategories: () => ({ data: [] }),
+  useBillsData: () => ({ data: { bills: [], allocations: [] } }),
+  useFixedAllocationMutation: () => ({ mutateAsync: vi.fn() }),
   useTransactionMutations: () => ({ create: { mutateAsync: mocks.create },
     update: { mutateAsync: mocks.update }, remove: { mutateAsync: mocks.remove } }),
 }))
@@ -16,6 +18,28 @@ const editing: Tx = { id: 1, type: 'expense', amount: 12.5, categoryId: null,
   source: 'manual', refundOfId: null, status: 'confirmed', createdAt: 'x' }
 
 describe('QuickAdd 秒级时间', () => {
+  it('待确认交易可明确确认并保存，确认前不能打开固定分摊', async () => {
+    render(<QuickAdd open onClose={() => {}} editing={{ ...editing, status: 'pending' }} />)
+    expect((screen.getByRole('button', { name: /分摊到固定支出/ }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: '确认并保存' }))
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith({ id: 1,
+      patch: expect.objectContaining({ status: 'confirmed' }),
+    }))
+  })
+
+  it('已有交易可以独立打开分摊，未保存交易修改时提示先保存', () => {
+    render(<QuickAdd open onClose={() => {}} editing={editing} />)
+    fireEvent.change(screen.getByLabelText('金额（元）'), { target: { value: '30' } })
+    expect((screen.getByRole('button', { name: /分摊到固定支出/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('请先保存交易修改，再打开分摊。')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('金额（元）'), { target: { value: '12.5' } })
+    fireEvent.click(screen.getByRole('button', { name: /分摊到固定支出/ }))
+    expect(screen.getByRole('dialog', { name: '分摊到固定支出' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '关闭分摊' }))
+    expect(screen.getByRole('dialog', { name: '编辑交易' })).toBeTruthy()
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
   it('编辑旧记录时保留未知时间，不用当前时刻覆盖', async () => {
     render(<QuickAdd open onClose={() => {}} editing={editing} />)
     expect((screen.getByLabelText('交易时间') as HTMLInputElement).value).toBe('')

@@ -13,6 +13,7 @@ let pool: ReturnType<typeof createDb>['pool']
 let db: ReturnType<typeof createDb>['db']
 
 const TABLES = [
+  'bill_allocations',
   'email_receipts',
   'bill_payments',
   'transactions',

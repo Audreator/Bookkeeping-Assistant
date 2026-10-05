@@ -5,6 +5,7 @@ import { round2, todayISO, toLocalTime } from '../lib/dates'
 import { Modal } from './Modal'
 import { Icon } from './Icon'
 import { makeRequestId } from '../lib/requestId'
+import { FixedAllocationDialog } from './FixedAllocationDialog'
 
 interface Props {
   open: boolean
@@ -35,6 +36,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
   const [requestId] = useState(() => makeRequestId('manual'))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [allocationOpen, setAllocationOpen] = useState(false)
 
   const submit = async () => {
     const value = Number(amount)
@@ -55,6 +57,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
       note: note.trim() || null,
       occurredAt: date,
       occurredTime: normalizedTime || null,
+      ...(editing?.status === 'pending' ? { status: 'confirmed' as const } : {}),
     }
     setBusy(true)
     try {
@@ -84,6 +87,10 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
 
   const inputClass =
     'w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 outline-none focus:border-brand-500'
+  const changed = editing && (type !== editing.type || Number(amount) !== editing.amount ||
+    categoryId !== editing.categoryId || merchant !== (editing.merchant ?? '') || note !== (editing.note ?? '') ||
+    date !== editing.occurredAt || time !== (editing.occurredTime ?? ''))
+  if (allocationOpen && editing) return <FixedAllocationDialog transaction={editing} onClose={() => setAllocationOpen(false)} />
 
   return (
     <Modal open={open} label={editing ? '编辑交易' : '记一笔'} sheet onClose={() => { if (!busy) onClose() }}>
@@ -184,6 +191,14 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
           </div>
         </div>
 
+        {editing ? <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
+          <button type="button" disabled={busy || Boolean(changed) || editing.status !== 'confirmed'}
+            onClick={() => setAllocationOpen(true)} className="w-full text-left text-sm font-medium text-brand-700 disabled:text-stone-400">
+            {editing.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'} <span className="float-right">›</span>
+          </button>
+          <p className="mt-1 text-xs leading-relaxed text-stone-500">{changed ? '请先保存交易修改，再打开分摊。' : editing.status !== 'confirmed' ? '请先确认这笔交易。' : '房租、水费一起付？选择多项并分配金额，保留原始流水。'}</p>
+        </div> : <p className="mt-4 text-xs leading-relaxed text-stone-500">房租等固定支出：保存后点开这笔记录，可分摊到一项或多项账单。</p>}
+
         {error && <p role="alert" className="mt-3 text-sm text-red-500">{error}</p>}
 
         <div className="mt-4 flex gap-3">
@@ -203,7 +218,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
             disabled={busy}
             className="flex-1 rounded-xl bg-brand-700 py-2.5 font-medium text-white disabled:opacity-50"
           >
-            {busy ? '保存中…' : '保存'}
+            {busy ? '保存中…' : editing?.status === 'pending' ? '确认并保存' : '保存'}
           </button>
         </div>
     </Modal>
