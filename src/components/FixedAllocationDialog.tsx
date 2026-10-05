@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useBillsData, useFixedAllocationMutation } from '../api/hooks'
 import type { Bill, FixedAllocationInput, Tx } from '../api/types'
 import { daysInMonthKey, formatMoney, round2 } from '../lib/dates'
-import { Icon } from './Icon'
+import { ModalToolbar } from './ModalToolbar'
 import { Modal } from './Modal'
 
 interface Draft extends FixedAllocationInput { key: number; value: string }
@@ -66,10 +66,8 @@ export function FixedAllocationDialog({ transaction, onClose }: { transaction: T
   }
   return <Modal label={transaction.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'} sheet onClose={() => { if (!busy) onClose() }}>
     <div className="sheet-handle" />
-    <header className="mb-3 flex items-center justify-between gap-2">
-      <h2 className="text-lg font-semibold">{transaction.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'}</h2>
-      <button type="button" aria-label="关闭分摊" disabled={busy} onClick={onClose} className="close-button flex shrink-0 items-center justify-center text-stone-500"><Icon name="close" /></button>
-    </header>
+    <ModalToolbar title={transaction.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'} onClose={onClose}
+      closeLabel="关闭分摊" onConfirm={() => void submit()} confirmLabel="保存固定分摊" busy={busy} confirmDisabled={!ready} />
     <p className="text-xs leading-relaxed text-stone-500">原始流水 ¥{formatMoney(transaction.amount)} 保持不变。可选多项、按实际金额分摊，也可只付一部分。</p>
     {transaction.type === 'refund' && <p className="mt-2 text-xs leading-relaxed text-stone-500">未分摊部分按普通入账计算；仅选择实际退回的固定支出。</p>}
     {transaction.status !== 'confirmed' && <p className="mt-3 text-sm text-red-500">请先确认这笔交易，再分摊到固定支出。</p>}
@@ -79,7 +77,7 @@ export function FixedAllocationDialog({ transaction, onClose }: { transaction: T
     <div className="my-4 space-y-3">
       {bills.map((bill) => {
         const selected = rows.filter((row) => row.billId === bill.id)
-        return <section key={bill.id} className={`rounded-2xl border p-3 ${selected.length ? 'border-brand-200 bg-brand-50/40' : 'border-stone-200 bg-white/40'}`}>
+        return <section key={bill.id} className={`rounded-2xl border p-3 ${selected.length ? 'border-brand-500/25 bg-brand-50/40' : 'border-stone-200 bg-white/40'}`}>
           <label className="flex items-center gap-3">
             <input type="checkbox" aria-label={`选择${bill.name}`} disabled={!ready || busy} className="h-5 w-5 shrink-0 accent-brand-700"
               checked={selected.length > 0} onChange={(event) => event.target.checked ? append(bill) : setRows((old) => old.filter((row) => row.billId !== bill.id))} />
@@ -95,10 +93,10 @@ export function FixedAllocationDialog({ transaction, onClose }: { transaction: T
               <label className="min-w-0"><span className="mb-1 block text-xs text-stone-500">所属到期日</span>
                 <input className={inputClass} aria-label={`${label}所属到期日`} type="date" value={row.periodKey} disabled={busy}
                   onChange={(event) => updateRow(row.key, { periodKey: event.target.value })} /></label>
-              {selected.length > 1 && <button type="button" disabled={busy} onClick={() => setRows((old) => old.filter((r) => r.key !== row.key))} className="col-span-2 text-right text-xs text-red-500">移除此项</button>}
+              {selected.length > 1 && <button type="button" disabled={busy} onClick={() => setRows((old) => old.filter((r) => r.key !== row.key))} className="ios-button ios-button-link ios-button-danger ios-button-end col-span-2">移除此项</button>}
             </div>
           })}
-          {selected.length > 0 && <button type="button" disabled={busy} onClick={() => append(bill)} className="mt-3 text-xs text-brand-700">＋ 再分摊一期</button>}
+          {selected.length > 0 && <button type="button" disabled={busy} onClick={() => append(bill)} className="ios-button ios-button-link mt-3">＋ 再分摊一期</button>}
         </section>
       })}
     </div>
@@ -109,8 +107,8 @@ export function FixedAllocationDialog({ transaction, onClose }: { transaction: T
     <p className="mt-2 text-xs leading-relaxed text-stone-500">所属到期日用于区分每一期账单，可选择补交或提前支付的期次。固定退款不能超过该期已关联的支付金额。</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-500">{error}</p>}
     <div className="mt-4 flex gap-3">
-      <button type="button" disabled={busy || !ready || rows.length === 0} onClick={() => { setRows([]); setError('') }} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-stone-600 disabled:opacity-40">取消全部分摊</button>
-      <button type="button" disabled={busy || !ready} onClick={() => void submit()} className="flex-1 rounded-xl bg-brand-700 py-2.5 text-sm font-medium text-white disabled:opacity-40">{busy ? '保存中…' : '保存分摊'}</button>
+      <button type="button" disabled={busy || !ready || rows.length === 0} onClick={() => { setRows([]); setError('') }} className="ios-button ios-button-secondary ios-button-compact text-sm">取消全部分摊</button>
+      <button type="button" disabled={busy || !ready} onClick={() => void submit()} className="ios-button ios-button-primary flex-1">{busy ? '保存中…' : '保存分摊'}</button>
     </div>
   </Modal>
 }

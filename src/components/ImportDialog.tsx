@@ -5,6 +5,7 @@ import type { Tx } from '../api/types'
 import { fetchAllTransactions } from '../api/transactions'
 import { dedupe, parseAlipayCSV, parseWeChatCSV, type ParsedBill } from '../lib/billimport'
 import { Modal } from './Modal'
+import { ModalToolbar } from './ModalToolbar'
 import { makeRequestId } from '../lib/requestId'
 
 interface ImportRow extends ParsedBill {
@@ -106,7 +107,8 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <Modal label="账单对账导入" onClose={() => { if (!busy) { reset(); onClose() } }}>
-        <h2 className="mb-2 font-medium">账单对账导入</h2>
+        <ModalToolbar title="账单对账导入" onClose={() => { reset(); onClose() }} onConfirm={() => void confirm()}
+          confirmLabel="确认导入" busy={busy} confirmDisabled={stage !== 'preview' || fresh.length === 0} />
         {stage === 'pick' ? (
           <>
             <p className="mb-3 text-xs leading-relaxed text-stone-500">
@@ -160,7 +162,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
               reset()
               onClose()
             }}
-            className="flex-1 rounded-xl border border-stone-200 py-2.5 text-stone-600"
+            className="ios-button ios-button-secondary flex-1"
           >
             {stage === 'pick' ? '取消' : '返回'}
           </button>
@@ -169,7 +171,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
               type="button"
               onClick={() => void confirm()}
               disabled={busy || fresh.length === 0}
-              className="flex-1 rounded-xl bg-brand-700 py-2.5 font-medium text-white disabled:opacity-50"
+              className="ios-button ios-button-primary flex-1"
             >
               {busy ? '导入中…' : `导入 ${fresh.length} 笔`}
             </button>

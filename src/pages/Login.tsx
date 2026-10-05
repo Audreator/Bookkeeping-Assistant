@@ -62,7 +62,7 @@ export function Login() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-brand-700 py-2.5 font-medium text-white disabled:opacity-50"
+            className="ios-button ios-button-primary w-full"
           >
             {busy ? '登录中…' : '登录'}
           </button>

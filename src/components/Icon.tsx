@@ -1,4 +1,4 @@
-export type IconName = 'today' | 'ledger' | 'planner' | 'stats' | 'settings' | 'wallet' | 'plus' | 'close'
+export type IconName = 'today' | 'ledger' | 'planner' | 'stats' | 'settings' | 'wallet' | 'plus' | 'close' | 'check' | 'minus' | 'chevron-left' | 'chevron-right'
 
 const paths: Record<IconName, string[]> = {
   today: ['M3 10.5 12 3l9 7.5', 'M5 9v11h5v-6h4v6h5V9'],
@@ -9,6 +9,10 @@ const paths: Record<IconName, string[]> = {
   wallet: ['M4 7V5a2 2 0 0 1 2-2h12v4', 'M4 7h15a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 1-2Z', 'M21 11h-6v6h6', 'M17 14h.01'],
   plus: ['M12 5v14', 'M5 12h14'],
   close: ['m6 6 12 12', 'M18 6 6 18'],
+  check: ['m5 12 4 4 10-10'],
+  minus: ['M6 12h12'],
+  'chevron-left': ['m15 5-7 7 7 7'],
+  'chevron-right': ['m9 5 7 7-7 7'],
 }
 
 export function Icon({ name, className = '' }: { name: IconName; className?: string }) {

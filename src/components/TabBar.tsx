@@ -19,8 +19,8 @@ export function TabBar() {
             to={tab.to}
             end={tab.to === '/'}
             className={({ isActive }) =>
-              `tab-item flex flex-1 flex-col items-center gap-1 text-[11px] ${
-                isActive ? 'tab-active font-semibold text-brand-700' : 'text-stone-500'
+              `tab-item flex flex-1 flex-col items-center justify-center ${
+                isActive ? 'tab-active' : ''
               }`
             }
           >

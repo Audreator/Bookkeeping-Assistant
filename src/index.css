@@ -97,22 +97,28 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
 .hero-amount { letter-spacing: -.045em; line-height: 1.3; font-size: clamp(2rem, 8vw, 2.6rem); }
 .hero-metrics { border-top: 1px solid #dedede80; padding-top: 1.15rem; margin-top: 1.3rem; }
 .glass-tabbar {
-  width: min(calc(100% - 28px), 474px);
+  width: min(calc(100% - 32px), 474px);
   left: 50%; transform: translateX(-50%);
-  bottom: calc(12px + env(safe-area-inset-bottom));
-  padding: 7px; border-radius: 28px;
-  background: linear-gradient(160deg, #fffffff2, #f0f0f0d9);
-  box-shadow: 0 14px 44px #0000001a, inset 0 1px 0 #ffffff;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  padding: 5px; border-radius: 999px;
+  border-color: #d0d0d073;
+  background: linear-gradient(165deg, #ffffff8c, #ffffffe0 55%, #ffffffa8);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  backdrop-filter: blur(32px) saturate(1.6);
+  box-shadow: 0 10px 30px #00000012, inset 0 1px 1px #ffffffed, inset 0 -1px 1px #ffffffa6;
 }
-.tab-item { min-width: 0; padding: 8px 2px; border-radius: 21px; min-height: 56px; }
-.tab-active { background: #e9e9e9cc; box-shadow: inset 0 1px 1px #ffffffa8, 0 2px 6px #00000012; }
+.tab-item { min-width: 0; padding: 8px 2px 7px; border-radius: 999px; min-height: 62px; color: #282828; gap: 3px; font-size: 11px; font-weight: 550; line-height: 1.2; }
+.tab-item svg { width: 25px; height: 25px; stroke-width: 1.85; }
+.tab-active { color: #0885fa; background: linear-gradient(150deg, #dedede80, #edededcc); box-shadow: inset 0 1px 1px #ffffffa8, inset 0 -1px 1px #00000004; font-weight: 650; }
+.tab-active span { color: #0059b2; }
+.tab-item:active { background-color: #e2e2e280; }
 .tx-row:hover { background-color: #ffffff66; }
 .tx-row:active { background-color: #eeeeee88; }
 .empty-state { background: #ffffff70; }
 .fab {
   position: fixed; bottom: calc(99px + env(safe-area-inset-bottom));
   right: max(22px, calc((100vw - 512px) / 2 + 22px));
-  width: 56px; height: 56px; border-radius: 21px; z-index: 10;
+  width: 56px; height: 56px; border-radius: 50%; z-index: 10;
   display: flex; justify-content: center; align-items: center;
   color: white; background: #0885fa;
   border: 1px solid #ffffff45; box-shadow: 0 8px 22px #00000024, inset 0 1px 0 #ffffff38;
@@ -122,7 +128,37 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
 .glass-modal { border-radius: 26px; max-height: 86dvh; background: linear-gradient(145deg, #fffffffa, #f4f4f4f5); }
 .glass-sheet { border-radius: 30px 30px 0 0; max-height: 92dvh; padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
 .sheet-handle { width: 34px; height: 4px; margin: -5px auto 12px; background: #bcbcbcb3; border-radius: 8px; }
-.close-button { width: 44px; height: 44px; border-radius: 50%; background: #e8e8e8b3; }
+.modal-toolbar { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; align-items: center; gap: 12px; margin-bottom: 20px; }
+.ios-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 10px 20px; border-radius: 999px;
+  border: 1px solid #ffffffb3; font-weight: 600; line-height: 1.25;
+  box-shadow: inset 0 1px 1px #ffffffcc, inset 0 -1px 1px #00000004, 0 2px 8px #00000006;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.ios-button-secondary { color: #181818; background: linear-gradient(165deg, #ffffffed, #ffffff8c); border-color: #d4d4d480; }
+.ios-button-primary { color: #fff; background: #0885fa; border-color: #ffffff40; font-size: 19px; box-shadow: inset 0 1px 1px #ffffff73, inset 0 -1px 1px #00000008, 0 3px 10px #0885fa20; }
+.ios-button-danger { color: #c92525; background: linear-gradient(165deg, #fff9f9f2, #ffe7e780); border-color: #fe3a3926; }
+.ios-button-sm { padding: 8px 14px; min-height: 44px; font-size: 13px; white-space: nowrap; }
+.ios-button-primary.ios-button-sm { color: #0059b2; background: #e8f3ff; border-color: #0885fa20; }
+.ios-button-circle { width: 46px; height: 46px; flex-shrink: 0; padding: 0; border-radius: 50%; }
+.ios-button-circle svg { width: 25px; height: 25px; stroke-width: 1.9; }
+.ios-button-spread { justify-content: space-between; }
+.ios-button-end { justify-content: flex-end; }
+.ios-button-compact { padding-inline: 12px; }
+.ios-button-link { border-color: transparent; background: transparent; color: #0067cf; box-shadow: none; padding: 6px 12px; font-size: 13px; }
+.ios-button-link.ios-button-danger { color: #c92525; }
+.ios-button:active:not(:disabled) { transform: scale(.96); box-shadow: inset 0 1px 3px #00000012; }
+.ios-button:disabled { color: #767676; background: #e2e2e2; border-color: #d4d4d466; box-shadow: inset 0 1px 1px #ffffff80; }
+.ios-button-primary.ios-button-circle:disabled { color: #fff; background: #c7c7cb; }
+.ios-remove { width: 44px; min-width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.ios-remove svg { width: 22px; height: 22px; color: #fff; background: #fe3a39; border-radius: 50%; padding: 3px; box-shadow: inset 0 1px 1px #ffffff40; }
+.ios-remove:active { background: #fe3a3910; }
+@media (hover: hover) {
+  .ios-button-secondary:hover:not(:disabled) { background: #fff; box-shadow: inset 0 1px 1px #fff, 0 3px 12px #0000000d; }
+  .ios-button-primary:hover:not(:disabled) { filter: brightness(.97); }
+}
 .amount-field { border: 1px solid #dedede; background: #ffffffa3; box-shadow: inset 0 1px 3px #00000004; }
 .amount-field input { font-size: 2rem; }
 .calendar-day { min-height: 55px; border: 1px solid transparent; }
@@ -131,6 +167,7 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass-card, .glass-modal, .glass-tabbar { background: #fdfdfd; }
+  .ios-button-secondary { background: #fcfcfc; }
 }
 @media (min-width: 640px) {
   .glass-sheet { border-radius: 30px; padding-bottom: 1.25rem; }
@@ -141,4 +178,6 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
 }
 @media (prefers-reduced-transparency: reduce) {
   .glass-card, .glass-modal, .glass-tabbar { background: #fcfcfc; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ios-button { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ios-button-secondary { background: #fcfcfc; }
 }

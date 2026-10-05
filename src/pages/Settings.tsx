@@ -15,6 +15,7 @@ import type { Bill, Category, SettingsMap } from '../api/types'
 import { ImportDialog } from '../components/ImportDialog'
 import { Money } from '../components/Money'
 import { Page } from '../components/Page'
+import { Icon } from '../components/Icon'
 import { buildBackup, decryptBackup, encryptBackup, mapBackupAllocations, type BackupData } from '../lib/backup'
 import { daysInMonthKey, todayISO } from '../lib/dates'
 import { computeReserve } from '../engine/reserve'
@@ -358,7 +359,7 @@ export function Settings() {
 
       <h2 className="mb-2 mt-5 flex items-center justify-between px-1 text-xs text-stone-400">
         <span>分类管理</span>
-        <button type="button" className="text-brand-700" onClick={() => void addCategory()}>
+        <button type="button" className="ios-button ios-button-primary ios-button-sm" onClick={() => void addCategory()}>
           ＋ 新增
         </button>
       </h2>
@@ -372,7 +373,7 @@ export function Settings() {
               <button
                 type="button"
                 aria-label={`删除分类 ${cat.name}`}
-                className="px-1.5 text-xs text-stone-300"
+                className="ios-remove"
                 onClick={() => {
                   if (!window.confirm(`删除分类「${cat.name}」？`)) return
                   catMut.remove.mutate(cat.id, {
@@ -380,7 +381,7 @@ export function Settings() {
                   })
                 }}
               >
-                ✕
+                <Icon name="minus" />
               </button>
             </span>
           ))}
@@ -389,7 +390,7 @@ export function Settings() {
 
       <h2 className="mb-2 mt-5 flex items-center justify-between px-1 text-xs text-stone-400">
         <span>固定支出</span>
-        <button type="button" className="text-brand-700" onClick={() => void editBill()}>
+        <button type="button" className="ios-button ios-button-primary ios-button-sm" onClick={() => void editBill()}>
           ＋ 新增
         </button>
       </h2>
@@ -402,7 +403,7 @@ export function Settings() {
             {(billsData.data?.bills ?? []).map((bill) => {
               const progress = monthlyBills.find((item) => item.billId === bill.id)
               return (
-              <li key={bill.id} className="flex items-center justify-between px-4 py-3 text-sm">
+              <li key={bill.id} className="flex flex-wrap items-center justify-between gap-x-1 px-4 py-3 text-sm">
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void editBill(bill)}>
                   <span className="block truncate">
                     {bill.name}
@@ -417,15 +418,15 @@ export function Settings() {
                       : `${progress.paid ? '已付' : progress.paidAmount > 0 ? '部分支付' : '未付'} ¥${progress.paidAmount.toFixed(2)}${!progress.paid ? ` · 待付 ¥${progress.remainingAmount.toFixed(2)}` : ''}`}
                   </span>}
                 </button>
-                <Money value={bill.amount} className="mr-2" />
+                <Money value={bill.amount} className="mx-1 shrink-0" />
                 <button type="button" aria-label={`${bill.active ? '停用' : '启用'}固定支出 ${bill.name}`}
-                  className="mr-2 shrink-0 text-xs text-brand-700" onClick={() => billMut.updateBill.mutate({ id: bill.id, patch: { active: !bill.active } }, {
+                  className="ios-button ios-button-link shrink-0" onClick={() => billMut.updateBill.mutate({ id: bill.id, patch: { active: !bill.active } }, {
                     onError: (err) => setError(err instanceof Error ? err.message : '账单状态修改失败'),
                   })}>{bill.active ? '停用' : '启用'}</button>
                 <button
                   type="button"
                   aria-label={`删除固定支出 ${bill.name}`}
-                  className="text-xs text-stone-300"
+                  className="ios-remove"
                   onClick={() => {
                     if (!window.confirm(`删除固定支出「${bill.name}」？`)) return
                     billMut.removeBill.mutate(bill.id, {
@@ -433,7 +434,7 @@ export function Settings() {
                     })
                   }}
                 >
-                  ✕
+                  <Icon name="minus" />
                 </button>
               </li>
             )})}
@@ -454,7 +455,7 @@ export function Settings() {
           <button
             type="button"
             disabled={busy}
-            className="rounded-xl border border-stone-200 py-2 text-sm text-stone-600 disabled:opacity-50"
+            className="ios-button ios-button-secondary text-sm"
             onClick={() => void exportBackup(false)}
           >
             导出备份
@@ -462,12 +463,12 @@ export function Settings() {
           <button
             type="button"
             disabled={busy}
-            className="rounded-xl border border-stone-200 py-2 text-sm text-stone-600 disabled:opacity-50"
+            className="ios-button ios-button-secondary text-sm"
             onClick={() => void exportBackup(true)}
           >
             加密导出
           </button>
-          <label className="col-span-2 cursor-pointer rounded-xl border border-stone-200 py-2 text-center text-sm text-stone-600">
+          <label className="ios-button ios-button-secondary col-span-2 cursor-pointer text-sm">
             导入备份文件
             <input
               type="file"

@@ -4,6 +4,7 @@ import type { Tx, TxType } from '../api/types'
 import { round2, todayISO, toLocalTime } from '../lib/dates'
 import { Modal } from './Modal'
 import { Icon } from './Icon'
+import { ModalToolbar } from './ModalToolbar'
 import { makeRequestId } from '../lib/requestId'
 import { FixedAllocationDialog } from './FixedAllocationDialog'
 
@@ -39,6 +40,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
   const [allocationOpen, setAllocationOpen] = useState(false)
 
   const submit = async () => {
+    if (busy) return
     const value = Number(amount)
     if (!Number.isFinite(value) || value <= 0) {
       setError('请输入正确的金额')
@@ -95,10 +97,9 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
   return (
     <Modal open={open} label={editing ? '编辑交易' : '记一笔'} sheet onClose={() => { if (!busy) onClose() }}>
         <div className="sheet-handle" />
-        <header className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{editing ? '编辑交易' : '记一笔'}</h2>
-          <button type="button" className="close-button flex items-center justify-center text-stone-500" aria-label="关闭" disabled={busy} onClick={onClose}><Icon name="close" /></button>
-        </header>
+        <ModalToolbar title={editing ? '编辑交易' : '记一笔'} onClose={onClose} onConfirm={() => void submit()}
+          confirmLabel={editing?.status === 'pending' ? '确认交易' : '保存交易'} busy={busy}
+          confirmDisabled={!Number.isFinite(Number(amount)) || Number(amount) <= 0 || !date} />
         <div className="mb-3 flex rounded-xl bg-stone-100 p-1 text-sm">
           {(
             [
@@ -187,14 +188,14 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
           </div>
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>{time ? '按实际交易时间记录，精确到秒' : '时间未记录，可补充实际交易时刻'}</span>
-            <button type="button" onClick={() => { setTime(''); setAutoTime(false) }} className="shrink-0 px-2 text-brand-700">清空时间</button>
+            <button type="button" onClick={() => { setTime(''); setAutoTime(false) }} className="ios-button ios-button-link shrink-0">清空时间</button>
           </div>
         </div>
 
         {editing ? <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
           <button type="button" disabled={busy || Boolean(changed) || editing.status !== 'confirmed'}
-            onClick={() => setAllocationOpen(true)} className="w-full text-left text-sm font-medium text-brand-700 disabled:text-stone-400">
-            {editing.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'} <span className="float-right">›</span>
+            onClick={() => setAllocationOpen(true)} className="ios-button ios-button-secondary ios-button-spread w-full text-sm">
+            {editing.type === 'refund' ? '分摊固定退款' : '分摊到固定支出'} <Icon name="chevron-right" />
           </button>
           <p className="mt-1 text-xs leading-relaxed text-stone-500">{changed ? '请先保存交易修改，再打开分摊。' : editing.status !== 'confirmed' ? '请先确认这笔交易。' : '房租、水费一起付？选择多项并分配金额，保留原始流水。'}</p>
         </div> : <p className="mt-4 text-xs leading-relaxed text-stone-500">房租等固定支出：保存后点开这笔记录，可分摊到一项或多项账单。</p>}
@@ -207,7 +208,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
               type="button"
               onClick={handleDelete}
               disabled={busy}
-              className="rounded-xl border border-red-200 px-4 py-2.5 text-red-500 disabled:opacity-50"
+              className="ios-button ios-button-danger"
             >
               删除
             </button>
@@ -216,7 +217,7 @@ function QuickAddForm({ open, onClose, editing, defaultDate }: Props) {
             type="button"
             onClick={submit}
             disabled={busy}
-            className="flex-1 rounded-xl bg-brand-700 py-2.5 font-medium text-white disabled:opacity-50"
+            className="ios-button ios-button-primary flex-1"
           >
             {busy ? '保存中…' : editing?.status === 'pending' ? '确认并保存' : '保存'}
           </button>

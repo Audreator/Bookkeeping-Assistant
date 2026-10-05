@@ -14,6 +14,7 @@ import { useCategories, useTransactions } from '../api/hooks'
 import { Money } from '../components/Money'
 import { Page } from '../components/Page'
 import { DataError } from '../components/DataError'
+import { Icon } from '../components/Icon'
 import { addDays, daysInMonthKey, formatMoney, monthKey, monthStart, todayISO } from '../lib/dates'
 import { dailyTotals, monthlyByCategory, monthExpense, monthIncome, topMerchants } from '../lib/stats'
 
@@ -71,8 +72,8 @@ export function Stats() {
   return (
     <Page>
       <header className="mb-4 flex items-center justify-between">
-        <button type="button" aria-label="上个月" onClick={() => shiftMonth(-1)} className="min-w-11 rounded-full bg-white/60 px-2 text-stone-500">
-          ‹
+        <button type="button" aria-label="上个月" onClick={() => shiftMonth(-1)} className="ios-button ios-button-secondary ios-button-circle">
+          <Icon name="chevron-left" />
         </button>
         <h1 className="text-lg font-semibold">
           {month.slice(0, 4)} 年 {Number(month.slice(5))} 月
@@ -82,9 +83,9 @@ export function Stats() {
           onClick={() => shiftMonth(1)}
           disabled={!canNext}
           aria-label="下个月"
-          className="min-w-11 rounded-full bg-white/60 px-2 text-stone-500 disabled:opacity-30"
+          className="ios-button ios-button-secondary ios-button-circle"
         >
-          ›
+          <Icon name="chevron-right" />
         </button>
       </header>
 

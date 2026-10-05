@@ -13,6 +13,7 @@ import { QuickAdd } from '../components/QuickAdd'
 import { TxList } from '../components/TxList'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
+import { ModalToolbar } from '../components/ModalToolbar'
 import { DataError } from '../components/DataError'
 import { calendarOffset, formatCN, round2, todayISO } from '../lib/dates'
 import { useBudgetState } from '../state/useBudgetState'
@@ -95,20 +96,20 @@ export function Planner() {
 
   return (
     <Page>
-      <header className="mb-4 flex items-center justify-between">
-        <div><h1>规划</h1><p className="mt-1.5 text-xs text-stone-500">为每一天，留好余量</p></div>
-        <div className="flex gap-2">
+      <header className="mb-4 flex flex-wrap items-center justify-between">
+        <div className="shrink-0"><h1>规划</h1><p className="mt-1.5 text-xs text-stone-500">为每一天，留好余量</p></div>
+        <div className="ml-auto flex shrink-0 gap-2">
           <button
             type="button"
             onClick={() => void switchMode()}
-            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-600"
+            className="ios-button ios-button-secondary ios-button-sm"
           >
             切到{state.mode === 'month' ? '周' : '月'}预算
           </button>
           <button
             type="button"
             onClick={() => setDialogOpen(true)}
-            className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-medium text-white"
+            className="ios-button ios-button-primary ios-button-sm"
           >
             改预算
           </button>
@@ -299,6 +300,7 @@ function BudgetDialog({
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
+    if (busy) return
     const value = Number(monthBudget)
     if (!Number.isFinite(value) || value <= 0) return
     const overrideText = weekOverride.trim()
@@ -332,11 +334,12 @@ function BudgetDialog({
 
   return (
     <Modal label="调整预算" onClose={() => { if (!busy) onClose() }}>
-        <h2 className="mb-3 font-medium">调整预算</h2>
+        <ModalToolbar title="调整预算" onClose={onClose} onConfirm={() => void submit()} confirmLabel="保存预算"
+          busy={busy} confirmDisabled={!Number.isFinite(Number(monthBudget)) || Number(monthBudget) <= 0} />
         <div className="space-y-3 text-sm">
           <label className="block">
             <span className="mb-1 block text-stone-500">月预算（元）</span>
-            <input className={inputClass} type="number" inputMode="decimal" value={monthBudget} onChange={(e) => setMonthBudget(e.target.value)} />
+            <input className={inputClass} data-autofocus type="number" inputMode="decimal" value={monthBudget} onChange={(e) => setMonthBudget(e.target.value)} />
           </label>
           <label className="block">
             <span className="mb-1 block text-stone-500">周预算手改值（可选，留空自动折算）</span>
@@ -365,10 +368,10 @@ function BudgetDialog({
           </label>
         </div>
         <div className="mt-4 flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-stone-600">
+          <button type="button" onClick={onClose} disabled={busy} className="ios-button ios-button-secondary flex-1">
             取消
           </button>
-          <button type="button" onClick={() => void submit()} disabled={busy} className="flex-1 rounded-xl bg-brand-700 py-2.5 font-medium text-white disabled:opacity-50">
+          <button type="button" onClick={() => void submit()} disabled={busy} className="ios-button ios-button-primary flex-1">
             {busy ? '保存中…' : '保存'}
           </button>
         </div>
