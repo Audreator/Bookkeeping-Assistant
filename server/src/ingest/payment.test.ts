@@ -19,6 +19,29 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
     expect(r).toMatchObject({ type: 'refund', amount: 35.5 })
   })
 
+  it('快捷支付退款短信（退款紧跟支付词）', () => {
+    expect(parsePaymentText('您尾号1234的账户10月06日快捷支付退款100.00元')).toMatchObject({
+      type: 'refund',
+      amount: 100,
+    })
+  })
+
+  it('退款详情页含原支付状态，退款金额优先', () => {
+    expect(parsePaymentText('快捷支付\n支付成功\n退款金额：100.00元\n支付金额：100.00元')).toMatchObject({
+      type: 'refund',
+      amount: 100,
+    })
+  })
+
+  it('已全额退款/原路返回/已返还', () => {
+    expect(parsePaymentText('您的订单已全额退款，100.00元原路返回')).toMatchObject({ type: 'refund', amount: 100 })
+    expect(parsePaymentText('退款已返还至您的储蓄卡 50.00元')).toMatchObject({ type: 'refund', amount: 50 })
+  })
+
+  it('条件表述不冒充退款', () => {
+    expect(parsePaymentText('如支付成功将原路退回')).toBeNull()
+  })
+
   it('金额带千分位或 元 后缀', () => {
     expect(parsePaymentText('支付成功 1,234.00元')?.amount).toBe(1234)
     expect(parsePaymentText('付款成功，金额 0.01 元')?.amount).toBe(0.01)
