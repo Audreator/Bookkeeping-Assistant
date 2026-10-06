@@ -99,11 +99,11 @@ export function TabBar() {
 
   return (
     <nav ref={navRef} aria-label="主导航" className="glass-tabbar fixed z-20">
-      <GlassRefraction surfaceRef={navRef} motionKey={activeIndex} edgeWidth={12} strength={11} />
+      <GlassRefraction surfaceRef={navRef} motionKey={activeIndex} edgeWidth={12} strength={3} />
       <div className="tab-track">
         <span aria-hidden="true" className="tab-selection" style={{ transform: `translateX(${activeIndex * 100}%)` }}>
           <span ref={shapeRef} className="tab-selection-shape">
-            <GlassRefraction surfaceRef={shapeRef} motionKey={activeIndex} edgeWidth={12} strength={12} />
+            <GlassRefraction surfaceRef={shapeRef} motionKey={activeIndex} edgeWidth={12} strength={3.5} />
           </span>
         </span>
         {TABS.map((tab) => (

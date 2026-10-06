@@ -119,6 +119,8 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+.tab-selection-shape > .glass-refraction { opacity: 0; }
+.tab-selection-shape[data-moving='true'] > .glass-refraction { opacity: 1; }
 .glass-refraction { display: none; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
 .glass-refraction-window { position: absolute; inset: 0; pointer-events: none; }
 .glass-refraction-source { position: absolute; inset: 0; pointer-events: none; }
