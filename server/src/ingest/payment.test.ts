@@ -19,6 +19,55 @@ describe('parsePaymentText（付款成功页 OCR 文本）', () => {
     expect(r).toMatchObject({ type: 'refund', amount: 35.5 })
   })
 
+  it('快捷支付退款短信（退款紧跟支付词）', () => {
+    expect(parsePaymentText('您尾号1234的账户10月06日快捷支付退款100.00元')).toMatchObject({
+      type: 'refund',
+      amount: 100,
+    })
+    expect(parsePaymentText('您账户1234于10月06日09:42:07快捷支付退款人民币20.00元，账户余额120.00元，点此查看详情'))
+      .toMatchObject({ type: 'refund', amount: 20 })
+  })
+
+  it('退款详情页有明确完成状态，优先退款金额而非原支付金额', () => {
+    expect(parsePaymentText('快捷支付\n支付成功\n退款成功\n退款金额：20.00元\n支付金额：100.00元')).toMatchObject({
+      type: 'refund',
+      amount: 20,
+    })
+  })
+
+  it('已全额退款/已返还/已成功退款均保留完成证据', () => {
+    expect(parsePaymentText('您的订单已全额退款，100.00元原路返回')).toMatchObject({ type: 'refund', amount: 100 })
+    expect(parsePaymentText('退款已返还至您的储蓄卡 50.00元')).toMatchObject({ type: 'refund', amount: 50 })
+    expect(parsePaymentText('您的订单已成功退款，退款金额20.00元，支付金额100.00元')).toMatchObject({ type: 'refund', amount: 20 })
+  })
+
+  it('条件表述不冒充退款', () => {
+    expect(parsePaymentText('如支付成功将原路退回')).toBeNull()
+  })
+
+  it.each([
+    '退款金额：100.00元',
+    '申请退款\n退款金额：100.00元',
+    '快捷支付退款需本人确认，金额100.00元',
+    '退货政策：100.00元可原路返回',
+    '购买后可原路返回100.00元',
+    '账户退款说明：快捷支付退款需本人确认，金额100.00元',
+    '您尾号1234的账户快捷支付退款需本人确认，金额100.00元',
+    '您尾号1234的账户可快捷支付退款100.00元',
+    '原路退回100.00元',
+    '原路退还100.00元',
+    '您尾号1234的账户快捷支付退款100.00元待确认',
+    '您尾号1234的账户快捷支付退款100.00元，需本人确认',
+    '您尾号1234的账户快捷支付退款100.00元，状态：审核中',
+  ])('金额标签、政策或待确认文案不证明退款完成：%s', (text) => {
+    expect(parsePaymentText(text)).toBeNull()
+  })
+
+  it('退款申请金额不会覆盖已完成支付的实际金额', () => {
+    expect(parsePaymentText('支付成功\n支付金额：100.00元\n退款金额：20.00元\n申请退款'))
+      .toMatchObject({ type: 'expense', amount: 100 })
+  })
+
   it('金额带千分位或 元 后缀', () => {
     expect(parsePaymentText('支付成功 1,234.00元')?.amount).toBe(1234)
     expect(parsePaymentText('付款成功，金额 0.01 元')?.amount).toBe(0.01)
