@@ -1,7 +1,9 @@
+import { resolveApiPrefix } from '../lib/apiBase'
+
 const TOKEN_KEY = 'jizhang.token'
 
-// 子路径部署时由构建变量 VITE_API_BASE 注入前缀（如 /m9f8...），默认空串（根路径部署）。
-const API_PREFIX = import.meta.env.VITE_API_BASE ?? ''
+// 显式配置优先；缺省跟随页面部署目录，避免子路径静态更新后请求根 /api。
+const API_PREFIX = resolveApiPrefix(import.meta.env.VITE_API_BASE, import.meta.env.BASE_URL, window.location.href)
 
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
 export const setToken = (token: string | null): void => {

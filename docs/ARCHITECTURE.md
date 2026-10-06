@@ -43,6 +43,8 @@ MySQL 8（本地 Docker，127.0.0.1:3306）
 
 前端通过 `src/api/hooks.ts` / `client.ts` 访问数据。当前服务器路由直接使用 Drizzle；尚未抽出 server repo。不要依赖历史文档中不存在的 `src/db/repo.ts` 或 Dexie 表。
 
+`src/lib/apiBase.ts` 统一解析 API 前缀：非空构建变量 `VITE_API_BASE` 优先，否则以 Vite `BASE_URL` 和当前页面 URL 解析部署目录，去掉末尾斜线再拼接 `/api/...`。当前 Vite `base: './'`，根入口请求 `/api`，HashRouter 子目录入口请求该目录下的 `/api`；hash、query 和显式 `index.html` 不进入前缀。显式 `/` 可指定根 API，空配置继续自动推导。反向代理需将无斜线目录入口重定向到带斜线入口，并剥离目录前缀后转发。通用构建不再依赖部署时注入私有路径；此逻辑不改变 JWT、密码预哈希、会话续期或收单鉴权。
+
 ## 按钮与弹窗
 
 `ModalToolbar` 统一弹窗顶部的圆形「×」与「✓」，分别调用关闭和保存回调；确认按钮在忙碌或不可用时显示灰色并禁用。底部文字按钮保留，和顶部确认按钮共享保存逻辑与忙碌状态。`Modal` 继续负责焦点约束、Esc 关闭和背景滚动锁定，关闭是否可用由调用方控制。
