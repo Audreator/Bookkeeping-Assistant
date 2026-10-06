@@ -12,7 +12,7 @@
 
 ## 开源设计参考
 
-2026-10-05 查阅、2026-10-06 复核以下 GitHub 项目。它们的 MIT 许可允许在保留版权与许可文本的前提下直接复用代码或依赖；按实际 Safari 兼容性和功能选择可用实现，复用时记录具体来源与版本。本次同色调整仍为当前 CSS 的统一灰雾层与高光修改，未新增库依赖。
+2026-10-05 查阅、2026-10-06 复核以下 GitHub 项目。它们的 MIT 许可允许在保留版权与许可文本的前提下直接复用代码或依赖；按实际 Safari 兼容性和功能选择可用实现，复用时记录具体来源与版本。同色调整与当前内缘渐隐沿用现有独立实现，本轮未复制库源码或新增依赖。
 
 许可原文：[samasante](https://github.com/samasante/liquid-glass/blob/main/LICENSE)、[rdev](https://github.com/rdev/liquid-glass-react/blob/master/LICENSE)、[shuding](https://github.com/shuding/liquid-glass/blob/main/LICENSE)。
 
