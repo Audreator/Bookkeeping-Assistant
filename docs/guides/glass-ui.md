@@ -6,17 +6,23 @@
 
 导航文字为 11px、400 常规字重，沿用系统字体；iPhone 上使用系统中文字体。选中项以蓝色和选择圈识别，不增加字重；文字和图标不参与玻璃圈的缩放形变。
 
+菜单与移动选择框的边缘、中间共用同一层 12% 灰雾，覆盖到外沿；不另加白色描边、渐变高光或白色内阴影。停止后的选择框保留整框毛玻璃与自己的细亮轮廓。下方内容在边缘会局部伸缩，因此内容本身仍可能有明暗变化，玻璃材质色保持连续。
+
 ## 开源设计参考
 
-2026-10-05 查阅以下 GitHub 项目。当前实现独立编写，没有安装这些库、复制其源码或新增运行时依赖。
+2026-10-05 查阅、2026-10-06 复核以下 GitHub 项目。它们的 MIT 许可允许在保留版权与许可文本的前提下直接复用代码或依赖；按实际 Safari 兼容性和功能选择可用实现，复用时记录具体来源与版本。本次同色调整仍为当前 CSS 的统一灰雾层与高光修改，未新增库依赖。
+
+许可原文：[samasante](https://github.com/samasante/liquid-glass/blob/main/LICENSE)、[rdev](https://github.com/rdev/liquid-glass-react/blob/master/LICENSE)、[shuding](https://github.com/shuding/liquid-glass/blob/main/LICENSE)。
 
 | 项目 | 参考与取舍 |
 |---|---|
-| [samasante/liquid-glass](https://github.com/samasante/liquid-glass)（MIT） | 参考对非交互 DOM 镜像使用元素 `filter: url()` 的方案，以及 Safari 的 1× 位移图、形状变化才重建和版本化 filter ID 工程原则。 |
+| [samasante/liquid-glass](https://github.com/samasante/liquid-glass)（MIT） | 可选用其 geometry／`refract` 元素滤镜路径及全幅 veil 叠层；默认材质模式在 Safari 主要为毛玻璃。采用 Safari 1× 地图、形状变化才重建、版本化 filter ID 等工程原则，具体兼容性按所选模式核对。 |
 | [rdev/liquid-glass-react](https://github.com/rdev/liquid-glass-react)（MIT） | 参考边缘高光和弹性形变。其 README 明确 Safari/Firefox 不显示位移；没有采用其依赖或把 Chromium 演示当作 iPhone 效果。 |
-| [shuding/liquid-glass](https://github.com/shuding/liquid-glass) | 参考 SVG 位移的呈现方法；其源码将 SVG 滤镜放在 `backdrop-filter`，不适合作为本项目 iPhone 折射路径，因此没有采用。 |
+| [shuding/liquid-glass](https://github.com/shuding/liquid-glass)（MIT） | 参考 SVG 位移的呈现方法；其源码将 SVG 滤镜放在 `backdrop-filter`，不适合作为本项目 iPhone 折射路径，因此没有采用。 |
 
 Safari 对 SVG 背景滤镜的限制及元素滤镜工程取舍见 [samasante 的浏览器说明](https://github.com/samasante/liquid-glass/blob/main/BROWSERS.md)。本项目采用元素滤镜路径，实际设备效果仍需在自己的 iPhone 核对。
+
+同色材质可直接适配上游 [`brightnessLayer` 全幅叠层](https://github.com/samasante/liquid-glass/blob/main/src/GlassMaterial.tsx#L584-L600)，覆盖中心和折射范围并继承圆角；上游默认白色／黑色高光需按目标灰雾色调整。宽菜单还需留意其浏览器说明中的单镜头椭圆膨胀限制，不能将默认宽镜头外观直接视为本项目的验收结果。
 
 ## 当前实现与降级
 
@@ -32,7 +38,7 @@ Safari 对 SVG 背景滤镜的限制及元素滤镜工程取舍见 [samasante �
 
 账本的横向筛选条等内部滚动区域也同步当前位置；源与副本在剪枝前按节点配对，剪枝后保留有效关系，避免移除弹窗遮罩后错配。滚动只同步相关节点，不重建整页副本，也不会由镜像自身的滚动引发循环。
 
-减少动态效果取消形变与滑动，直接选中；不支持 Web Animations 时保留 CSS 滑动，以可取消的 620ms 定时器维持移动期间的淡灰液态材质，重定向、减少动态效果或卸载会清理旧状态。减少透明度偏好使停稳后的选择框、卡片、弹窗和按钮使用更实的背景，菜单保留通透淡灰雾。停稳后的选择框在缺少背景模糊支持或启用减少透明度时使用 `#eeeeeef2` 浅色背景，减少透明度同时关闭其模糊；移动状态仍优先保持无模糊的淡灰雾。缺少边缘遮罩支持或位移图不可用时不显示折射带，菜单仍保留淡灰雾与普通边框。正常导航不依赖折射效果；卡片和弹窗保留各自的浅色材质，菜单的无模糊规则不套用到输入和表单。
+减少动态效果取消形变与滑动，直接选中；不支持 Web Animations 时保留 CSS 滑动，以可取消的 620ms 定时器维持移动期间的淡灰液态材质，重定向、减少动态效果或卸载会清理旧状态。减少透明度偏好使停稳后的选择框、卡片、弹窗和按钮使用更实的背景，菜单保留通透淡灰雾。停稳后的选择框在缺少背景模糊支持或启用减少透明度时使用 `#eeeeeef2` 浅色背景，减少透明度同时关闭其模糊；移动状态仍优先保持无模糊的淡灰雾。缺少边缘遮罩支持或位移图不可用时不显示折射带，菜单仍从中心到外沿保留统一淡灰雾。正常导航不依赖折射效果；卡片和弹窗保留各自的浅色材质，菜单的无模糊规则不套用到输入和表单。
 
 这些项目提供网页对 Apple 玻璃视觉的模拟，并非 Apple 官方 iOS 27 原生控件；网页不能保证与系统原生渲染逐像素一致。
 

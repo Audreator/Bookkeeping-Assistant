@@ -53,6 +53,8 @@ Apple／普通PWA图标的主体已放大36%，减少主屏幕留白；maskable�
 
 菜单文字统一为 11px 常规字重，选中项通过蓝色和玻璃圈区分。iPhone 16 Pro 的布局参考尺寸为 402 × 874 CSS 像素；尺寸模拟与真实 iOS Safari 验证分别记录，当前构建的验证状态见 [PROGRESS](docs/PROGRESS.md)。Safari 安全区、键盘和主屏幕使用的真机核对步骤见 [玻璃界面与设备验收](docs/guides/glass-ui.md)。
 
+菜单的灰雾从中心连续覆盖到外沿，边缘共用同一材质色，不额外叠加白色描边、渐变高光或内阴影。移动选择框采用同样处理，停稳后的整框毛玻璃保留；边缘下方内容仍会因局部折射产生形变。
+
 <img src="docs/images/apple-buttons-demo.jpg" width="260" alt="手机弹窗：浅色圆形关闭、蓝色圆形保存与底部文字胶囊按钮，使用合成演示数据" />
 <img src="docs/images/apple-tabbar-demo.jpg" width="260" alt="手机规划：悬浮玻璃菜单栏与蓝色选中项，使用合成演示数据" />
 
