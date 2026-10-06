@@ -108,6 +108,45 @@ describe('玻璃边缘光学', () => {
     )).toEqual({ x: -10 / 1.1, y: -1130 / 1.2, scaleX: 1 / 1.1, scaleY: 1 / 1.2 })
   })
 
+  it('折射遮罩让圆角外和中心透明，外半段保留完整局部折射', () => {
+    const map = createGlassDisplacementMap({ ...geometry, edgeWidth: 12 })
+    expect(map.edgeMask).toHaveLength(map.data.length)
+    const alpha = (x: number, y: number) => map.edgeMask[(y * map.width + x) * 4 + 3]
+    expect(alpha(0, 0)).toBe(0)
+    expect(alpha(120, 36)).toBe(0)
+    expect(alpha(120, 2)).toBe(255)
+    expect(alpha(15, 15)).toBe(255)
+  })
+
+  it('折射环内侧逐渐淡出，没有整圈硬切色阶', () => {
+    const map = createGlassDisplacementMap({ ...geometry, edgeWidth: 12 })
+    const alpha = (y: number) => map.edgeMask[(y * map.width + 120) * 4 + 3]
+    expect(alpha(7)).toBeLessThan(255)
+    expect(alpha(9)).toBeGreaterThan(0)
+    expect(alpha(11)).toBeGreaterThan(0)
+    expect(alpha(7)).toBeGreaterThan(alpha(9))
+    expect(alpha(9)).toBeGreaterThan(alpha(11))
+    expect(alpha(12)).toBe(0)
+  })
+
+  it('圆角遮罩左右上下对称，颜色不参与灰雾合成', () => {
+    const map = createGlassDisplacementMap({ ...geometry, edgeWidth: 12 })
+    for (const [x, y] of [[18, 18], [120, 9], [4, 35]]) {
+      const pixel = (px: number, py: number) => [...map.edgeMask.slice((py * map.width + px) * 4, (py * map.width + px) * 4 + 4)]
+      expect(pixel(x, y).slice(0, 3)).toEqual([255, 255, 255])
+      expect(pixel(x, y)).toEqual(pixel(map.width - 1 - x, y))
+      expect(pixel(x, y)).toEqual(pixel(x, map.height - 1 - y))
+    }
+  })
+
+  it('无折射带时遮罩全透明，过宽折射带在小胶囊内仍有渐隐', () => {
+    const disabled = createGlassDisplacementMap({ ...geometry, edgeWidth: 0 })
+    expect(disabled.edgeMask.filter((_, index) => index % 4 === 3).every(alpha => alpha === 0)).toBe(true)
+    const small = createGlassDisplacementMap({ width: 18, height: 18, radius: 9, edgeWidth: 24, strength: 100 })
+    expect(small.edgeMask).toHaveLength(18 * 18 * 4)
+    expect([...small.edgeMask].some((alpha, index) => index % 4 === 3 && alpha > 0 && alpha < 255)).toBe(true)
+  })
+
   it('没有有效布局时返回有限数值', () => {
     expect(glassSourceTransform(
       { left: 0, top: 0, width: 0, height: 0 },

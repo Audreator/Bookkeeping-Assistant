@@ -5,6 +5,7 @@ import { GlassRefraction } from './GlassRefraction'
 
 let now = 0
 let nextFrame = 0
+let lensWidth = 98
 const frames = new Map<number, FrameRequestCallback>()
 const makeImage = vi.fn(() => 'data:image/png;base64,bWFw')
 let shell: HTMLDivElement
@@ -32,8 +33,9 @@ async function flushMutations() {
 beforeEach(() => {
   now = 0
   nextFrame = 0
+  lensWidth = 98
   frames.clear()
-  makeImage.mockClear()
+  makeImage.mockReset().mockReturnValue('data:image/png;base64,bWFw')
   vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
     const frame = ++nextFrame
     frames.set(frame, callback)
@@ -53,7 +55,7 @@ beforeEach(() => {
     return this.matches('.glass-tabbar') ? 70 : this.matches('.app-page') ? 1200 : 0
   })
   vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
-    return this.matches('.glass-tabbar') ? 98 : 0
+    return this.matches('.glass-tabbar') ? lensWidth : 0
   })
   vi.spyOn(Element.prototype, 'clientHeight', 'get').mockImplementation(function (this: Element) {
     return this.matches('.glass-tabbar') ? 68 : 0
@@ -85,6 +87,38 @@ afterEach(() => {
 })
 
 describe('玻璃折射镜像生命周期', () => {
+  it('将圆角渐隐遮罩接入镜像，位移与遮罩仅随几何变化重新编码', async () => {
+    makeImage
+      .mockReturnValueOnce('data:image/png;base64,ZGlzcGxhY2VtZW50')
+      .mockReturnValueOnce('data:image/png;base64,ZWRnZS1tYXNr')
+      .mockReturnValueOnce('data:image/png;base64,bmV3LWRpc3BsYWNlbWVudA==')
+      .mockReturnValueOnce('data:image/png;base64,bmV3LWVkZ2UtbWFzaw==')
+    const view = render(<Fixture />, { container: shell.appendChild(document.createElement('div')) })
+    const mirror = shell.querySelector<HTMLElement>('[data-glass-refraction]')!
+    expect(mirror.style.getPropertyValue('--glass-edge-mask')).toBe('none')
+    flushFrame()
+    await flushMutations()
+    expect(mirror.style.getPropertyValue('--glass-edge-mask')).toBe('url(data:image/png;base64,ZWRnZS1tYXNr)')
+    expect(mirror.querySelector('feImage')!.getAttribute('href')).toBe('data:image/png;base64,ZGlzcGxhY2VtZW50')
+    expect(makeImage).toHaveBeenCalledTimes(2)
+
+    window.dispatchEvent(new Event('scroll'))
+    flushFrame()
+    view.rerender(<Fixture motionKey={1} />)
+    flushFrame(100)
+    flushFrame(701)
+    await flushMutations()
+    expect(makeImage).toHaveBeenCalledTimes(2)
+
+    lensWidth = 84
+    window.dispatchEvent(new Event('resize'))
+    flushFrame()
+    await flushMutations()
+    expect(makeImage).toHaveBeenCalledTimes(4)
+    expect(mirror.style.getPropertyValue('--glass-edge-mask')).toBe('url(data:image/png;base64,bmV3LWVkZ2UtbWFzaw==)')
+    expect(mirror.querySelector('feImage')!.getAttribute('href')).toBe('data:image/png;base64,bmV3LWRpc3BsYWNlbWVudA==')
+  })
+
   it('首次镜像保留子容器滚动偏移，后续横纵滚动仅同步对应副本', async () => {
     source.innerHTML = '<div class="modal-backdrop"><div role="dialog">弹窗</div></div><div class="filters" style="overflow:auto"><span>筛选条</span></div>'
     const scroller = source.querySelector<HTMLElement>('.filters')!
@@ -108,7 +142,7 @@ describe('玻璃折射镜像生命周期', () => {
     expect(mirrorScroller.scrollLeft).toBe(176)
     expect(mirrorScroller.scrollTop).toBe(73)
     expect(sourceClone).toHaveBeenCalledTimes(1)
-    expect(makeImage).toHaveBeenCalledTimes(1)
+    expect(makeImage).toHaveBeenCalledTimes(2)
     expect(shell.querySelector('filter')!.id).not.toBe(filterId)
     expect(frames.size).toBe(0)
 
@@ -155,7 +189,7 @@ describe('玻璃折射镜像生命周期', () => {
     expect(mirror.hasAttribute('inert')).toBe(true)
     expect(host.textContent).toBe('实时账目 128.50')
     expect(sourceClone).toHaveBeenCalledTimes(1)
-    expect(makeImage).toHaveBeenCalledTimes(1)
+    expect(makeImage).toHaveBeenCalledTimes(2)
     expect(frames.size).toBe(0)
     expect(filter.getAttribute('x')).toBe('0')
     expect(filter.getAttribute('y')).toBe('0')
@@ -181,7 +215,7 @@ describe('玻璃折射镜像生命周期', () => {
     flushFrame()
     await flushMutations()
     expect(sourceClone).toHaveBeenCalledTimes(1)
-    expect(makeImage).toHaveBeenCalledTimes(1)
+    expect(makeImage).toHaveBeenCalledTimes(2)
     shell.querySelector('.glass-tabbar')!.setAttribute('data-position', '2')
     shell.querySelector('.glass-refraction-source p')!.textContent = '装饰镜像更新'
     await flushMutations()
@@ -216,7 +250,7 @@ describe('玻璃折射镜像生命周期', () => {
     flushFrame(701)
     await flushMutations()
     expect(frames.size).toBe(0)
-    expect(makeImage).toHaveBeenCalledTimes(1)
+    expect(makeImage).toHaveBeenCalledTimes(2)
     view.rerender(<Fixture motionKey={2} />)
     expect(frames.size).toBe(1)
     view.unmount()

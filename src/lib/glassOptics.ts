@@ -55,17 +55,20 @@ export function sampleGlassDisplacement(x: number, y: number, geometry: GlassGeo
   }
 }
 
-/** RG channels encode displacement, not a screenshot; no page pixels enter canvas. */
+/** Geometry-only displacement and soft edge alpha; no page pixels enter canvas. */
 export function createGlassDisplacementMap(geometry: GlassGeometry) {
   const width = Math.max(1, Math.min(1024, Math.ceil(geometry.width)))
   const height = Math.max(1, Math.min(512, Math.ceil(geometry.height)))
-  const { strength } = boundedLens(geometry)
+  const { strength, edgeWidth } = boundedLens(geometry)
   const data = new Uint8ClampedArray(width * height * 4)
+  const edgeMask = new Uint8ClampedArray(data.length)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      const pointX = (x + .5) * geometry.width / width
+      const pointY = (y + .5) * geometry.height / height
       const displacement = sampleGlassDisplacement(
-        (x + .5) * geometry.width / width,
-        (y + .5) * geometry.height / height,
+        pointX,
+        pointY,
         geometry,
       )
       const offset = (y * width + x) * 4
@@ -73,9 +76,16 @@ export function createGlassDisplacementMap(geometry: GlassGeometry) {
       data[offset + 1] = strength > 0 ? Math.round(127.5 + displacement.y / strength * 127.5) : 128
       data[offset + 2] = 128
       data[offset + 3] = 255
+      // Keep the outer 60% fully refracted; blend back to the real page over
+      // the inner 40%. Smoothstep has zero slope at both ends of the seam.
+      const depth = -roundedRectSample(pointX, pointY, geometry).distance
+      const fade = edgeWidth > 0 ? Math.max(0, Math.min(1, (depth / edgeWidth - .6) / .4)) : 1
+      const alpha = depth > 0 && depth < edgeWidth ? 1 - fade * fade * (3 - 2 * fade) : 0
+      edgeMask[offset] = edgeMask[offset + 1] = edgeMask[offset + 2] = 255
+      edgeMask[offset + 3] = Math.round(alpha * 255)
     }
   }
-  return { width, height, data, scale: strength * 2 }
+  return { width, height, data, edgeMask, scale: strength * 2 }
 }
 
 const positiveRatio = (numerator: number, denominator: number) =>

@@ -15,29 +15,39 @@ interface FilterMap {
   radius: number
   scale: number
   url: string
+  maskUrl: string
 }
 
-const INITIAL_MAP: FilterMap = { width: 1, height: 1, radius: 0, scale: 0, url: '' }
+const INITIAL_MAP: FilterMap = { width: 1, height: 1, radius: 0, scale: 0, url: '', maskUrl: '' }
 const MIRROR_SELECTOR = '[data-glass-refraction]'
 
-function displacementDataUrl(width: number, height: number, radius: number, edgeWidth: number, strength: number) {
+function glassDataUrls(width: number, height: number, radius: number, edgeWidth: number, strength: number) {
   const map = createGlassDisplacementMap({ width, height, radius, edgeWidth, strength })
   const canvas = document.createElement('canvas')
   canvas.width = map.width
   canvas.height = map.height
   const context = canvas.getContext('2d')
-  if (!context) return { url: '', scale: 0 }
-  const pixels = context.createImageData(map.width, map.height)
-  pixels.data.set(map.data)
-  context.putImageData(pixels, 0, 0)
-  const url = canvas.toDataURL('image/png')
-  canvas.width = canvas.height = 0
-  return { url, scale: map.scale }
+  if (!context) {
+    canvas.width = canvas.height = 0
+    return { url: '', maskUrl: '', scale: 0 }
+  }
+  try {
+    const pixels = context.createImageData(map.width, map.height)
+    pixels.data.set(map.data)
+    context.putImageData(pixels, 0, 0)
+    const url = canvas.toDataURL('image/png')
+    pixels.data.set(map.edgeMask)
+    context.putImageData(pixels, 0, 0)
+    const maskUrl = canvas.toDataURL('image/png')
+    return { url, maskUrl, scale: map.scale }
+  } finally {
+    canvas.width = canvas.height = 0
+  }
 }
 
 /**
  * Safari-compatible refraction of a decorative DOM mirror. The enclosing CSS
- * ring mask excludes the center entirely, leaving the real page clear beneath.
+ * rounded distance mask fades the ring's inner edge into the clear real page.
  */
 export function GlassRefraction({
   surfaceRef,
@@ -150,9 +160,9 @@ export function GlassRefraction({
       const geometry = `${width}:${height}:${radius}:${edgeWidth}:${strength}`
       if (geometry !== previousGeometry) {
         previousGeometry = geometry
-        const { url, scale } = displacementDataUrl(width, height, radius, edgeWidth, strength)
-        mapReady = !!url
-        setMap({ width, height, radius, scale, url })
+        const { url, maskUrl, scale } = glassDataUrls(width, height, radius, edgeWidth, strength)
+        mapReady = !!url && !!maskUrl
+        setMap({ width, height, radius, scale, url, maskUrl })
         invalidate = true
       }
       const sourceWidth = source.offsetWidth || source.getBoundingClientRect().width
@@ -287,6 +297,7 @@ export function GlassRefraction({
   const style = {
     '--glass-edge-width': `${edgeWidth}px`,
     '--glass-radius': `${map.radius}px`,
+    '--glass-edge-mask': map.maskUrl ? `url(${map.maskUrl})` : 'none',
     pointerEvents: 'none',
   } as CSSProperties
   return (
