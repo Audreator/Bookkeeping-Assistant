@@ -19,14 +19,18 @@ const INCOME_CREDIT_RE = /(?:收款|转入|入账|进账|存入|汇入|转存)[�
 const PAYMENT_SUCCESS_RE = /(?:支付|付款|付费|消费|扣款|扣费|支出|花费|支取|取现|转出|缴费|还款)(?:已)?(?:成功|完成)|已(?:完成)?(?:支付|付款|付费|扣款|扣费|支出|支取|取现|转出|缴费|还款)|发生(?:了)?(?:一笔)?[^\n，。,；;]{0,12}?(?:支出|消费|扣款|支付|付费|花费|支取|转出)|账户(?:已)?出账[^\n，。,；;]{0,12}(?:支出|消费|扣款|支取|转出)/
 const GENERIC_SUCCESS_RE = /交易成功|交易完成|交易状态[：:\s]*成功/
 const EXPENSE_DIRECTION_RE = /(?:收\s*[/／]\s*支|收支(?:方向|类型)?|交易(?:方向|类型))[：:\s]*(?:支出|付款|支付|消费|扣款|扣费|付费|花费|支取|取现|转出|缴费|还款)|(?:实付|实际支付|实际付款|支付|付款|消费|支出|扣款|扣费|花费|付费|支取)金额|(?:^|\n)\s*[-−–—·・]\s*\d/
+// “发生快捷支付退款”中的支付是退款事件的一部分，不能截取为支付完成。
+// 只拦截复合交易词/发生事件，不影响付款成功页上的独立“申请退款”按钮。
+const REFUND_EVENT_RE = /(?:支付|付款|付费|消费|扣款|扣费|支出|花费|支取|取现|转出|缴费|还款)\s*(?:退款|退费|退回|退还|退货|退单|返款|返还|冲正|撤销)|发生(?:了)?(?:一笔)?[^\n，。,；;]{0,24}(?:退款|退费|退回|退还|退货|退单|返款|返还|冲正|撤销)/
 
 const NUMBER_SOURCE = '(?:[1-9]\\d{0,2}(?:,\\d{3})+|(?:0|[1-9]\\d*))(?:\\.\\d{1,2})?'
-// 银行通知的省略状态只接受“您的真实账户 + 可选日期时间 + 快捷支付退款 + 紧邻金额”。
+// 银行通知的省略状态只接受个人账户、日期时间、可选封闭通道栏、退款事件和紧邻金额。
 // 中间不跨过说明、条件或确认文字；金额后仅接受通知结束、余额字段和查看详情提示。
 // 没有明示成功的模板不能忽略未知后文，否则待确认/审核状态会冒充到账。
 const BANK_SEPARATOR_SOURCE = '[\\s，。,；;]*'
 const BANK_NOTIFICATION_END_SOURCE = `${BANK_SEPARATOR_SOURCE}(?:(?:账户余额|可用余额|余额)[：:\\s]*(?:人民币\\s*|[¥￥]\\s*)?${NUMBER_SOURCE}(?![\\d,.])(?:\\s*元)?${BANK_SEPARATOR_SOURCE})?(?:(?:点此|点击)查看详情${BANK_SEPARATOR_SOURCE})?$`
-const BANK_QUICK_REFUND_RE = new RegExp(`(?:您(?:的)?(?:尾号|末四位)\\s*\\d{4}\\s*的账户|您(?:的)?账户\\s*\\d{4})(?:[\\s\\d年月日/:：.\\-]|于){0,32}快捷支付退款[：:\\s]*(?:人民币\\s*|[¥￥]\\s*)?${NUMBER_SOURCE}(?![\\d,.])(?:\\s*元)?(?=${BANK_NOTIFICATION_END_SOURCE})`)
+const BANK_CHANNEL_SOURCE = '(?:在\\s*(?:【[^【】\\[\\]]{1,120}】|\\[[^【】\\[\\]]{1,120}\\])\\s*)?'
+const BANK_QUICK_REFUND_RE = new RegExp(`(?:您(?:的)?(?:尾号|末四位)\\s*\\d{4}\\s*的账户|您(?:的)?账户\\s*\\d{4})(?:[\\s\\d年月日/:：.\\-]|于){0,32}${BANK_CHANNEL_SOURCE}(?:发生(?:了)?(?:一笔)?\\s*)?快捷支付退款[，,：:\\s]*(?:人民币\\s*|[¥￥]\\s*)?${NUMBER_SOURCE}(?![\\d,.])(?:\\s*元)?(?=${BANK_NOTIFICATION_END_SOURCE})`)
 const LABEL_SOURCE = '实付金额|实际支付金额|实际支付|实付|退款金额|本次退款|实退金额|退回金额|退还金额|支付金额|付款金额|消费金额|支出金额|扣款金额|交易金额|金额'
 const NON_TX_LABEL_RE = /(?:账户余额|可用余额|余额|原付款金额|原支付金额|原交易金额|原价|订单金额|商品金额|优惠金额|优惠|红包|奖励|立减|优惠券|手续费|累计金额)[：:\s]*$/
 const MARKETING_BEFORE_RE = /(?:领取|领|最高|满|可得|返现|奖励|赠送)[^\n\d]{0,8}$/
@@ -182,6 +186,7 @@ export function parsePaymentText(text: string, referenceDate?: string): ParsedPa
   const paid = hasCompletedStatus(t, PAYMENT_SUCCESS_RE) || (hasCompletedStatus(t, GENERIC_SUCCESS_RE) && EXPENSE_DIRECTION_RE.test(t) && !positiveUnknown)
   const refunded = hasCompletedStatus(t, REFUND_SUCCESS_RE) || hasCompletedStatus(t, BANK_QUICK_REFUND_RE)
   const credited = hasCompletedStatus(t, INCOME_CREDIT_RE)
+  if (!refunded && !credited && REFUND_EVENT_RE.test(t)) return null
   const type = refunded || credited ? 'refund' : paid ? 'expense' : null
   if (type === null) return null
   const amount = parseAmount(t, type)

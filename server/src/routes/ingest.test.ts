@@ -266,4 +266,30 @@ describe('POST /api/ingest/ocr（快捷指令通道）', () => {
       expect(retry.json().transaction).toMatchObject({ occurredAt: '2026-10-04', occurredTime: '23:59:58' })
     } finally { clock.mockRestore(); day.mockRestore() }
   })
+
+  it('两笔招行快捷支付退款经通知/OCR入账为退款，按消息分钟和事件ID去重', async () => {
+    const clock = vi.spyOn(dateUtil, 'nowDateTime').mockReturnValue('2026-10-06 13:00:01')
+    try {
+      const prefix = '您账户1234于10月06日12:34在【财付\n通-微信支付-演示商户】发生快捷支付退款，人民币'
+      for (const [amount, eventId] of [[83.4, 'cmb-refund-a'], [6.2, 'cmb-refund-b']] as const) {
+        const payload = { text: { title: '招商银行', body: prefix + amount.toFixed(2) }, eventId }
+        const first = await post(payload)
+        expect(first.statusCode).toBe(201)
+        expect(first.json().transaction).toMatchObject({ type: 'refund', amount, merchant: null, occurredAt: '2026-10-06', occurredTime: '12:34:00' })
+        const retry = await post(payload)
+        expect(retry.statusCode).toBe(200)
+        expect(retry.json().transaction.id).toBe(first.json().transaction.id)
+        expect(retry.json().duplicate).toBe(true)
+      }
+    } finally { clock.mockRestore() }
+  })
+
+  it('不确定的快捷支付退款返回422且不写成支出', async () => {
+    const before = await db.select().from(transactions)
+    const prefix = '您账户1234于10月06日12:34在【财付通-微信支付-演示商户】发生快捷支付退款'
+    for (const text of [prefix + '待确认，人民币83.40', prefix + '，人民币83.40，状态：审核中', '发生退款快捷支付，人民币83.40']) {
+      expect((await post({ text })).statusCode).toBe(422)
+    }
+    expect(await db.select().from(transactions)).toHaveLength(before.length)
+  })
 })
