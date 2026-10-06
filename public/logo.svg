@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>记账本</title>
-  <desc>深灰玻璃账本与蓝色新增符号，浅灰不透明背景。</desc>
+  <desc>放大的深灰玻璃账本与蓝色新增符号，浅灰不透明背景。</desc>
   <defs>
     <linearGradient id="ledger" x1="154" y1="112" x2="352" y2="401" gradientUnits="userSpaceOnUse">
       <stop stop-color="#525257" />
@@ -34,6 +34,7 @@
     </clipPath>
   </defs>
   <rect width="512" height="512" fill="#F3F3F3" />
+  <g id="app-mark" transform="translate(256 256) scale(1.36) translate(-256 -256)">
   <rect x="130" y="110" width="246" height="292" rx="50" fill="url(#ledger)" />
   <g clip-path="url(#ledgerClip)">
     <path d="M130 110h246v85c-85 31-154 20-246 81Z" fill="url(#ledgerSheen)" />
@@ -48,4 +49,5 @@
   </g>
   <circle cx="330" cy="337" r="58.5" fill="none" stroke="#FFFFFF" stroke-opacity=".44" stroke-width="3" />
   <path d="M307 337h46M330 314v46" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" />
+  </g>
 </svg>

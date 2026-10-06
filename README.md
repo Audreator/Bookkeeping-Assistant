@@ -6,6 +6,8 @@
 
 界面采用纯浅灰背景、中心全透明且边缘折射的底部菜单、浅色卡片、蓝色主要按钮与预算圆环、红色危险操作，保留彩色分类与图表。弹窗使用浅色玻璃圆形关闭按钮和蓝色圆形确认按钮，常用操作采用胶囊按钮。主屏幕图标为带玻璃高光的简洁 2D 账本标识。
 
+Apple／普通PWA图标的主体已放大36%，减少主屏幕留白；maskable图标单独保留安全区比例。旧桌面图标若有缓存，可在Safari重新添加入口。比例与维护方式见[图标指南](docs/guides/icon-design.md)。
+
 **当前架构：React + Fastify + MySQL 8。** 账目保存在自己的服务器，生产模式一个端口同时提供网页和 API。当前是固定单用户应用，注册关闭，没有离线写入队列。
 
 [GitHub 仓库：Bookkeeping-Assistant](https://github.com/Audreator/Bookkeeping-Assistant)

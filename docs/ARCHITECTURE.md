@@ -57,6 +57,8 @@ MySQL 8（本地 Docker，127.0.0.1:3306）
 
 实现独立编写，无新增运行时依赖；Safari 的元素滤镜、1× 地图和缓存更新策略参考 [samasante/liquid-glass 的浏览器说明](https://github.com/samasante/liquid-glass/blob/main/BROWSERS.md)，未复制其源码。不支持边缘遮罩时保留透明中心和普通边框。菜单遵循全透明视觉要求；减少透明度偏好仍作用于卡片、弹窗和按钮。兼容实现不等于已完成 iPhone 真机验证，验证状态与核对步骤见 [玻璃界面指南](guides/glass-ui.md)。
 
+应用图标由 `public/logo.svg` 的 `app-mark` 分组统一生成：Apple与普通PWA使用1.36倍主体，maskable独立渲染原始比例以保留安全圆。图标不预裁切外框，PNG全画布不透明；生成脚本同步各尺寸与favicon，Apple链接版本用于更新缓存。详见[图标维护](guides/icon-design.md)。
+
 ## 预算数据流
 
 1. `useBudgetState` 从 API 拉取交易、预算事件、设置、固定支出与单日预算配置。
