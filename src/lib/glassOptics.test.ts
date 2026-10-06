@@ -7,7 +7,7 @@ import {
   sampleGlassDisplacement,
 } from './glassOptics'
 
-const geometry = { width: 240, height: 72, radius: 36, edgeWidth: 8, strength: 9 }
+const geometry = { width: 240, height: 72, radius: 36, edgeWidth: 8, strength: 1 }
 
 describe('玻璃边缘光学', () => {
   it('圆角矩形距离为负代表内部，边缘法线向外', () => {
@@ -29,16 +29,16 @@ describe('玻璃边缘光学', () => {
     expect(sampleGlassDisplacement(120, 36, geometry)).toEqual({ x: 0, y: 0 })
     expect(sampleGlassDisplacement(120, -1, geometry)).toEqual({ x: 0, y: 0 })
     expect(sampleGlassDisplacement(120, 8, geometry)).toEqual({ x: 0, y: 0 })
-    const top = sampleGlassDisplacement(120, 4, geometry)
+    const top = sampleGlassDisplacement(120, 2, geometry)
     expect(top.x).toBe(0)
-    expect(top.y).toBeCloseTo(9)
+    expect(top.y).toBeCloseTo(Math.SQRT1_2)
   })
 
   it('两侧位移对称，始终不会超过设定强度', () => {
-    const left = sampleGlassDisplacement(4, 36, geometry)
-    const right = sampleGlassDisplacement(236, 36, geometry)
+    const left = sampleGlassDisplacement(2, 36, geometry)
+    const right = sampleGlassDisplacement(238, 36, geometry)
     expect(left.x).toBeCloseTo(-right.x)
-    expect(left.x).toBeCloseTo(9)
+    expect(left.x).toBeCloseTo(Math.SQRT1_2)
     expect(left.y).toBe(0)
     for (let y = 0; y < geometry.height; y += 3) {
       for (let x = 0; x < geometry.width; x += 3) {
@@ -48,16 +48,55 @@ describe('玻璃边缘光学', () => {
     }
   })
 
+  it('只重排同一边缘带的内容：一段压缩、一段拉伸而非整体搬移', () => {
+    const lens = { ...geometry, edgeWidth: 12, strength: 1.6 }
+    const outer = sampleGlassDisplacement(120, 3, lens)
+    const inner = sampleGlassDisplacement(120, 9, lens)
+    expect(outer.y).toBeGreaterThan(0)
+    expect(inner.y).toBeLessThan(0)
+    expect(sampleGlassDisplacement(120, 6, lens).y).toBeCloseTo(0)
+    const sourceDepth = (depth: number) => depth + sampleGlassDisplacement(120, depth, lens).y
+    expect(sourceDepth(3.1) - sourceDepth(3)).toBeGreaterThan(.1)
+    expect(sourceDepth(6.1) - sourceDepth(6)).toBeLessThan(.04)
+    expect(sourceDepth(11.999) - sourceDepth(11.998)).toBeCloseTo(.001, 5)
+  })
+
+  it('过高力度仍保持单调与带内采样，不折返或引入外部及中心内容', () => {
+    for (const strength of [1.6, 3, 9, 100]) {
+      const lens = { ...geometry, edgeWidth: 12, strength }
+      let previous = -1
+      for (let depth = 0; depth <= 12; depth += .025) {
+        const sourceDepth = depth + sampleGlassDisplacement(120, depth, lens).y
+        expect(sourceDepth).toBeGreaterThanOrEqual(-1e-8)
+        expect(sourceDepth).toBeLessThanOrEqual(12 + 1e-8)
+        expect(sourceDepth).toBeGreaterThan(previous)
+        previous = sourceDepth
+      }
+    }
+  })
+
+  it('窄胶囊或过宽边缘带也不会把圆角内的采样点推到胶囊外', () => {
+    const lens = { width: 18, height: 18, radius: 9, edgeWidth: 24, strength: 100 }
+    for (let y = .25; y < 18; y += .5) {
+      for (let x = .25; x < 18; x += .5) {
+        if (roundedRectSample(x, y, lens).distance >= 0) continue
+        const bend = sampleGlassDisplacement(x, y, lens)
+        expect(roundedRectSample(x + bend.x, y + bend.y, lens).distance).toBeLessThanOrEqual(1e-8)
+      }
+    }
+  })
+
   it('生成不透明 RG 位移纹理，中心为中性并限制每像素工作量', () => {
     const map = createGlassDisplacementMap(geometry)
     expect(map.width).toBe(240)
     expect(map.height).toBe(72)
-    expect(map.scale).toBe(18)
+    expect(map.scale).toBe(2)
     expect(map.data).toHaveLength(240 * 72 * 4)
     expect([...map.data.slice((36 * 240 + 120) * 4, (36 * 240 + 120) * 4 + 4)]).toEqual([128, 128, 128, 255])
-    const top = (3 * 240 + 120) * 4
+    const top = (1 * 240 + 120) * 4
     expect(map.data[top]).toBe(128)
-    expect(map.data[top + 1]).toBeGreaterThan(240)
+    expect(map.data[top + 1]).toBeGreaterThan(128)
+    expect(map.data[(6 * 240 + 120) * 4 + 1]).toBeLessThan(128)
   })
 
   it('缩放中的选中胶囊反向缩放真实页面，使镜像保持屏幕坐标', () => {

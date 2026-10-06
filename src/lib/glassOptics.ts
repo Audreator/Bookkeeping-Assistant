@@ -31,14 +31,24 @@ export function roundedRectSample(x: number, y: number, shape: GlassShape) {
   }
 }
 
-/** The clear core never bends. A smooth lens profile bends only the inner edge. */
+function boundedLens(geometry: GlassGeometry) {
+  const edgeWidth = Math.max(0, Math.min(geometry.edgeWidth, geometry.width / 2, geometry.height / 2))
+  // The inverse sampling map has derivative >= .15, so it cannot fold or
+  // pull samples across either boundary of this local edge band.
+  const strength = Math.max(0, Math.min(geometry.strength, .85 * edgeWidth / (2 * Math.PI)))
+  return { edgeWidth, strength }
+}
+
+/** Stretch and compress the local edge band; leave its boundaries/core fixed. */
 export function sampleGlassDisplacement(x: number, y: number, geometry: GlassGeometry) {
   const sample = roundedRectSample(x, y, geometry)
   const depth = -sample.distance
-  if (depth <= 0 || depth >= geometry.edgeWidth || geometry.edgeWidth <= 0 || geometry.strength <= 0) {
+  const { edgeWidth, strength } = boundedLens(geometry)
+  if (depth <= 0 || depth >= edgeWidth || edgeWidth <= 0 || strength <= 0) {
     return { x: 0, y: 0 }
   }
-  const bend = Math.sin(Math.PI * depth / geometry.edgeWidth) * geometry.strength
+  const position = depth / edgeWidth
+  const bend = Math.sin(2 * Math.PI * position) * Math.sin(Math.PI * position) * strength
   return {
     x: sample.normalX === 0 ? 0 : -sample.normalX * bend,
     y: sample.normalY === 0 ? 0 : -sample.normalY * bend,
@@ -49,7 +59,7 @@ export function sampleGlassDisplacement(x: number, y: number, geometry: GlassGeo
 export function createGlassDisplacementMap(geometry: GlassGeometry) {
   const width = Math.max(1, Math.min(1024, Math.ceil(geometry.width)))
   const height = Math.max(1, Math.min(512, Math.ceil(geometry.height)))
-  const strength = Math.max(0, geometry.strength)
+  const { strength } = boundedLens(geometry)
   const data = new Uint8ClampedArray(width * height * 4)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

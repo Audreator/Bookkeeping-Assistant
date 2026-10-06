@@ -150,6 +150,7 @@ describe('玻璃折射镜像生命周期', () => {
     const lens = mirror.querySelector<HTMLElement>('.glass-refraction-window')!
     const filter = mirror.querySelector('filter')!
     const host = mirror.querySelector<HTMLElement>('.glass-refraction-source')!
+    const sourceClip = mirror.querySelector<HTMLElement>('.glass-refraction-clip')!
     expect(mirror.getAttribute('aria-hidden')).toBe('true')
     expect(mirror.hasAttribute('inert')).toBe(true)
     expect(host.textContent).toBe('实时账目 128.50')
@@ -160,7 +161,13 @@ describe('玻璃折射镜像生命周期', () => {
     expect(filter.getAttribute('y')).toBe('0')
     expect(lens.style.transform).toBe('')
     expect(lens.style.filter.replaceAll('"', '')).toBe(`url(#${filter.id})`)
-    expect(lens.style.backgroundColor).toBe('rgb(244, 244, 244)')
+    expect(lens.style.backgroundColor).toBe('')
+    expect(sourceClip.style.backgroundColor).toBe('rgb(244, 244, 244)')
+    expect(sourceClip.parentElement).toBe(lens)
+    expect(host.parentElement).toBe(sourceClip)
+    expect(sourceClip.style.borderRadius).toBe('34px')
+    // Default requested strength is 9; the encoded effective scale must be used.
+    expect(Number(filter.querySelector('feDisplacementMap')!.getAttribute('scale'))).toBeCloseTo(.85 * 8 / Math.PI)
     expect(host.style.transform).toBe(`scale(${1 / 1.1}, ${1 / 1.2})`)
     expect(parseFloat(host.style.left)).toBeCloseTo((20 - 31.1) / 1.1)
     expect(parseFloat(host.style.top)).toBeCloseTo((-400 - 731.2) / 1.2)

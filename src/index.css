@@ -104,7 +104,7 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
   backdrop-filter: none;
   box-shadow: 0 8px 26px #00000014, 0 0 0 1px #00000008, inset 0 1px 1px #ffffffed, inset 0 -1px 1px #ffffff80;
 }
-.tab-track { position: relative; display: flex; isolation: isolate; overflow: visible; }
+.tab-track { position: relative; z-index: 1; display: flex; isolation: isolate; overflow: visible; }
 .tab-selection { position: absolute; inset-block: -6px; left: 0; width: 20%; pointer-events: none; z-index: 0; transition: transform 620ms cubic-bezier(.2, .8, .2, 1); }
 .tab-selection-shape {
   position: absolute; inset: 0; border-radius: 999px;
@@ -121,8 +121,13 @@ input:not([type='checkbox']):focus, select:focus, textarea:focus { box-shadow: 0
 }
 .tab-selection-shape > .glass-refraction { opacity: 0; }
 .tab-selection-shape[data-moving='true'] > .glass-refraction { opacity: 1; }
-.glass-refraction { display: none; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.glass-tabbar::after, .tab-selection-shape[data-moving='true']::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: rgb(132 138 148 / 12%); pointer-events: none; z-index: 0;
+}
+.glass-refraction { display: none; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
 .glass-refraction-window { position: absolute; inset: 0; pointer-events: none; }
+.glass-refraction-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .glass-refraction-source { position: absolute; inset: 0; pointer-events: none; }
 @supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
   .glass-refraction {

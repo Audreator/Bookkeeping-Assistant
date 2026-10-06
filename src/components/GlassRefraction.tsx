@@ -26,13 +26,13 @@ function displacementDataUrl(width: number, height: number, radius: number, edge
   canvas.width = map.width
   canvas.height = map.height
   const context = canvas.getContext('2d')
-  if (!context) return ''
+  if (!context) return { url: '', scale: 0 }
   const pixels = context.createImageData(map.width, map.height)
   pixels.data.set(map.data)
   context.putImageData(pixels, 0, 0)
   const url = canvas.toDataURL('image/png')
   canvas.width = canvas.height = 0
-  return url
+  return { url, scale: map.scale }
 }
 
 /**
@@ -49,6 +49,7 @@ export function GlassRefraction({
   const reactId = useId()
   const filterId = `glass-refraction-${reactId.replace(/[^\w-]/g, '')}`
   const sourceHostRef = useRef<HTMLDivElement>(null)
+  const sourceClipRef = useRef<HTMLDivElement>(null)
   const windowRef = useRef<HTMLDivElement>(null)
   const filterRef = useRef<SVGFilterElement>(null)
   const filterVersion = useRef(0)
@@ -60,10 +61,12 @@ export function GlassRefraction({
   useEffect(() => {
     const surfaceNode = surfaceRef.current
     const hostNode = sourceHostRef.current
+    const clipNode = sourceClipRef.current
     const windowNode = windowRef.current
-    if (!surfaceNode || !hostNode || !windowNode) return
+    if (!surfaceNode || !hostNode || !clipNode || !windowNode) return
     const surface = surfaceNode
     const host = hostNode
+    const sourceClip = clipNode
     const lensWindow = windowNode
 
     let source: HTMLElement | null = null
@@ -118,7 +121,7 @@ export function GlassRefraction({
         direction: style.direction,
         pointerEvents: 'none',
       })
-      lensWindow.style.backgroundColor = getComputedStyle(shell).backgroundColor
+      sourceClip.style.backgroundColor = getComputedStyle(shell).backgroundColor
       host.appendChild(clone)
     }
 
@@ -147,9 +150,9 @@ export function GlassRefraction({
       const geometry = `${width}:${height}:${radius}:${edgeWidth}:${strength}`
       if (geometry !== previousGeometry) {
         previousGeometry = geometry
-        const url = displacementDataUrl(width, height, radius, edgeWidth, strength)
+        const { url, scale } = displacementDataUrl(width, height, radius, edgeWidth, strength)
         mapReady = !!url
-        setMap({ width, height, radius, scale: Math.max(0, strength) * 2, url })
+        setMap({ width, height, radius, scale, url })
         invalidate = true
       }
       const sourceWidth = source.offsetWidth || source.getBoundingClientRect().width
@@ -306,7 +309,9 @@ export function GlassRefraction({
         visibility: map.url ? undefined : 'hidden',
         pointerEvents: 'none',
       }}>
-        <div ref={sourceHostRef} className="glass-refraction-source" style={{ transformOrigin: '0 0', pointerEvents: 'none' }} />
+        <div ref={sourceClipRef} className="glass-refraction-clip" style={{ borderRadius: map.radius }}>
+          <div ref={sourceHostRef} className="glass-refraction-source" style={{ transformOrigin: '0 0', pointerEvents: 'none' }} />
+        </div>
       </div>
     </span>
   )
