@@ -18,7 +18,7 @@ vi.mock('../components/QuickAdd', () => ({ QuickAdd: () => null }))
 function setBudget(netSpent: number, periodBudget: number) {
   mocks.state = {
     mode: 'month', periodStart: '2026-10-01', periodEnd: '2026-10-31',
-    periodBudget, baseToday: 80, pool: 0, availableToday: 80,
+    periodBudget, baseToday: 80, pool: 0, availableToday: 80, periodBalance: 0,
     issuedInPeriod: 400, spentInPeriod: netSpent, remainingInPeriod: periodBudget - netSpent,
     overridesFeasible: true,
     days: [{ date: '2026-10-05', base: 80, available: 80, spent: netSpent, isOverride: false }],
@@ -65,5 +65,14 @@ describe('Today 净入账与预算进度', () => {
     expect(screen.queryByText('本期净入账')).toBeNull()
     const fill = container.querySelector('circle[stroke-dasharray]')!
     expect(Number(fill.getAttribute('stroke-dashoffset'))).toBe(0)
+  })
+
+  it('首页把今日额度与本期结余分开展示', () => {
+    setBudget(0, 2250)
+    mocks.state!.periodBalance = 35
+    const { container } = render(<Today />)
+    expect(screen.getByText('今日可花')).toBeTruthy()
+    expect(screen.getByText('本期结余')).toBeTruthy()
+    expect(container.textContent).toContain('¥35.00')
   })
 })

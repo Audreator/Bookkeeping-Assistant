@@ -36,15 +36,54 @@ const run = (
 
 const OCT_3100 = [ev('2026-10-01', { monthBudget: 3100 })]
 
+describe('每日额度与本期结余分开显示', () => {
+  it('今日可花只显示每日额度；昨日未用金额单独留在本期结余', () => {
+    const s = run(OCT_3100, [tx('2026-10-01', 80)], '2026-10-02')
+    expect(s.baseToday).toBe(100)
+    expect(s.availableToday).toBe(100)
+    expect(s.periodBalance).toBe(20)
+  })
+
+  it('每日额度花完后先消耗本期结余', () => {
+    const s = run(OCT_3100, [
+      tx('2026-10-01', 60),
+      tx('2026-10-02', 120),
+    ], '2026-10-02')
+    expect(s.availableToday).toBe(0)
+    expect(s.periodBalance).toBe(20)
+  })
+
+  it('每日额度和正结余都耗尽后，两项显示同一笔负数超支', () => {
+    const s = run(OCT_3100, [
+      tx('2026-10-01', 50),
+      tx('2026-10-02', 160),
+    ], '2026-10-02')
+    expect(s.availableToday).toBe(-10)
+    expect(s.periodBalance).toBe(-10)
+  })
+
+  it('没有结余时，超过当日平均额度的部分同时显示为负数', () => {
+    const s = run(OCT_3100, [tx('2026-10-01', 120)], '2026-10-01')
+    expect(s.availableToday).toBe(-20)
+    expect(s.periodBalance).toBe(-20)
+  })
+
+  it('当日退款先恢复当日额度，超过每日额度的退款加入本期结余', () => {
+    const s = run(OCT_3100, [tx('2026-10-01', 50, { type: 'refund' })], '2026-10-01')
+    expect(s.availableToday).toBe(100)
+    expect(s.periodBalance).toBe(50)
+  })
+})
+
 describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
-  it('无消费：可花额逐日累计，未来投影全期间', () => {
+  it('无消费：今日可花为每日额度，日历仍保留累计结转投影', () => {
     const s = run(OCT_3100, [], '2026-10-03')
     expect(s.periodStart).toBe('2026-10-01')
     expect(s.periodEnd).toBe('2026-10-31')
     expect(s.periodBudget).toBe(3100)
     expect(s.baseToday).toBe(100)
     expect(s.pool).toBe(200)
-    expect(s.availableToday).toBe(300)
+    expect(s.availableToday).toBe(100)
     expect(s.remainingInPeriod).toBe(3100)
     expect(s.days).toHaveLength(31)
     expect(s.days[0].available).toBe(100)
@@ -53,19 +92,19 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
     expect(s.days[30].available).toBe(3100)
   })
 
-  it('第一天花 80 → 次日可花 120，当天剩余 20', () => {
+  it('第一天花 80 → 次日每日额度仍为 100，结余为 20', () => {
     const s = run(OCT_3100, [tx('2026-10-01', 80)], '2026-10-02')
     expect(s.pool).toBe(20)
-    expect(s.availableToday).toBe(120)
+    expect(s.availableToday).toBe(100)
     expect(s.spentInPeriod).toBe(80)
     expect(s.remainingInPeriod).toBe(3020)
     expect(s.days[0].available).toBe(20)
   })
 
-  it('第一天花 150 → 次日可花 50（超支负结转）', () => {
+  it('第一天花 150 → 次日每日额度仍为 100，保留 50 负结余', () => {
     const s = run(OCT_3100, [tx('2026-10-01', 150)], '2026-10-02')
     expect(s.pool).toBe(-50)
-    expect(s.availableToday).toBe(50)
+    expect(s.availableToday).toBe(100)
     expect(s.remainingInPeriod).toBe(2950)
   })
 
@@ -75,8 +114,8 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
       [tx('2026-10-01', 150), tx('2026-10-02', 150)],
       '2026-10-03',
     )
-    // 截至昨日已发放 200、已花 300 → pool −100，今日可花 0
-    expect(s.availableToday).toBe(0)
+    // 截至昨日 pool −100 单独呈现为结余；今日仍有独立的 100 元额度。
+    expect(s.availableToday).toBe(100)
     expect(s.remainingInPeriod).toBe(2800)
   })
 
@@ -95,7 +134,7 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
   it('退款超过本期支出时保留负净已花，已入账现金完整恢复可花与剩余预算', () => {
     const s = run(OCT_3100, [tx('2026-10-01', 50), tx('2026-10-02', 150, { type: 'refund' })], '2026-10-02')
     expect(s.spentInPeriod).toBe(-100)
-    expect(s.availableToday).toBe(300)
+    expect(s.availableToday).toBe(100)
     expect(s.remainingInPeriod).toBe(3200)
     expect(s.days[1].spent).toBe(-150)
     expect(s.days[30].available).toBe(3200)
@@ -108,7 +147,7 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
       '2026-10-02',
     )
     expect(s.spentInPeriod).toBe(0)
-    expect(s.availableToday).toBe(200)
+    expect(s.availableToday).toBe(100)
   })
 
   it('浮点金额精确到分（当日消费立即扣减今日可花）', () => {
@@ -121,9 +160,9 @@ describe('computeBudgetState 月模式·每日 100 元（3100/31）', () => {
   it('今日消费实时压低今天与之后每天的可花额', () => {
     const withSpend = run(OCT_3100, [tx('2026-10-04', 50)], '2026-10-04')
     const withoutSpend = run(OCT_3100, [], '2026-10-04')
-    expect(withoutSpend.availableToday).toBe(400)
+    expect(withoutSpend.availableToday).toBe(100)
     expect(withoutSpend.days[4].available).toBe(500)
-    expect(withSpend.availableToday).toBe(350)
+    expect(withSpend.availableToday).toBe(50)
     expect(withSpend.days[3].available).toBe(350)
     expect(withSpend.days[4].available).toBe(450)
     expect(withSpend.days[30].available).toBe(3050)
@@ -150,7 +189,7 @@ describe('computeBudgetState 预算调整', () => {
     // 剩余 21 天，B′ = 5200/21 = 247.62
     expect(s.baseToday).toBeCloseTo(247.62, 2)
     expect(s.pool).toBe(200)
-    expect(s.availableToday).toBeCloseTo(447.62, 2)
+    expect(s.availableToday).toBeCloseTo(247.62, 2)
     expect(s.remainingInPeriod).toBe(5400)
   })
 
@@ -169,7 +208,7 @@ describe('computeBudgetState 预算调整', () => {
     // 已发 400，已花 800 → pool −400；B′ = (1550−400)/27 = 42.59
     expect(s.baseToday).toBeCloseTo(42.59, 2)
     expect(s.pool).toBe(-400)
-    expect(s.availableToday).toBeCloseTo(-357.41, 2)
+    expect(s.availableToday).toBeCloseTo(42.59, 2)
     expect(s.remainingInPeriod).toBe(750)
   })
 })
@@ -179,13 +218,13 @@ describe('computeBudgetState 跨期与模式', () => {
     const s = run(OCT_3100, [], '2026-11-02')
     expect(s.periodStart).toBe('2026-11-01')
     expect(s.pool).toBeCloseTo(103.33, 2)
-    expect(s.availableToday).toBeCloseTo(206.67, 2)
+    expect(s.availableToday).toBeCloseTo(103.33, 2)
     expect(s.remainingInPeriod).toBe(3100)
   })
 
   it('自然跨月：开启跨期结转则带入', () => {
     const s = run(OCT_3100, [], '2026-11-02', true)
-    expect(s.availableToday).toBeCloseTo(3306.67, 2)
+    expect(s.availableToday).toBeCloseTo(103.33, 2)
   })
 
   it('自定义起始日 25：期间与日额正确', () => {
@@ -193,7 +232,7 @@ describe('computeBudgetState 跨期与模式', () => {
     expect(s.periodStart).toBe('2026-01-25')
     expect(s.periodEnd).toBe('2026-02-24')
     expect(s.baseToday).toBeCloseTo(96.77, 2)
-    expect(s.availableToday).toBeCloseTo(193.55, 2)
+    expect(s.availableToday).toBeCloseTo(96.77, 2)
   })
 
   it('模式切换：从切换日开新期间，结转池保留', () => {
@@ -207,7 +246,7 @@ describe('computeBudgetState 跨期与模式', () => {
     expect(s.periodEnd).toBe('2026-10-16')
     // 前 9 天共发放 900，无消费；周预算 = 3100×7/31 = 700，日额 100
     expect(s.pool).toBe(900)
-    expect(s.availableToday).toBe(1000)
+    expect(s.availableToday).toBe(100)
   })
 })
 
@@ -221,7 +260,7 @@ describe('computeBudgetState 周模式', () => {
     expect(s.periodStart).toBe('2026-09-28')
     expect(s.periodEnd).toBe('2026-10-04')
     expect(s.baseToday).toBeCloseTo(103.33, 2)
-    expect(s.availableToday).toBeCloseTo(56.67, 2)
+    expect(s.availableToday).toBeCloseTo(103.33, 2)
   })
 
   it('周与周之间默认清零', () => {
@@ -233,7 +272,7 @@ describe('computeBudgetState 周模式', () => {
   it('开启跨期结转时周与周带入', () => {
     const s = run(weekEvents, [], '2026-10-05', true)
     // 上一周（9/28 起）自动周预算 723.33 全部结转到本周，今日 = 723.33 + 100
-    expect(s.availableToday).toBeCloseTo(823.33, 2)
+    expect(s.availableToday).toBe(100)
   })
 
   it('手改周覆盖额度优先于自动折算', () => {
@@ -242,7 +281,7 @@ describe('computeBudgetState 周模式', () => {
     ]
     const s = run(events, [], '2026-09-29')
     expect(s.baseToday).toBe(200)
-    expect(s.availableToday).toBe(400)
+    expect(s.availableToday).toBe(200)
   })
 })
 
@@ -360,7 +399,7 @@ describe('computeBudgetState 边界', () => {
 
   it('所有输出金额均经 round2', () => {
     const s = run([ev('2026-10-01', { monthBudget: 1000 })], [tx('2026-10-01', 33.33)], '2026-10-02')
-    expect(s.availableToday).toBe(round2(2 * (1000 / 31) - 33.33))
+    expect(s.availableToday).toBe(round2(1000 / 31))
     expect(Number.isInteger(Math.round(s.availableToday * 100))).toBe(true)
   })
 })
@@ -379,7 +418,7 @@ describe('固定支出预留从当期总预算扣除', () => {
     const s = withReserve(620)
     expect(s.periodBudget).toBe(2480)
     expect(s.baseToday).toBe(80)
-    expect(s.availableToday).toBe(240)
+    expect(s.availableToday).toBe(80)
     expect(s.remainingInPeriod).toBe(2480)
     expect(s.days[30].available).toBe(2480)
   })

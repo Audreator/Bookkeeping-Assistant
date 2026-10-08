@@ -113,7 +113,8 @@ describe('固定分摊的现金预算守恒', () => {
     const r = computeReserve(bills.slice(0, 1), [], start, end, today, { transactions: txs, allocations })
     const state = computeBudgetState({ events: [{ ...event, at: '2026-09-01' }], today, carryoverAcrossPeriod: true,
       transactions: fixedBudgetTransactions(txs, allocations, start, today), fixedReserve: { periodStart: start, amount: r.reserved } })
-    expect(state.availableToday).toBe(2670.97)
+    expect(state.availableToday).toBe(74.19)
+    expect(state.periodBalance).toBeCloseTo(2596.77, 2)
     expect(state.spentInPeriod).toBe(0)
   })
   it('模式切换后，旧期间固定流水保持原现金扣款', () => {

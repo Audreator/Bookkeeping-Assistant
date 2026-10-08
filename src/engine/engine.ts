@@ -30,6 +30,18 @@ const budgetOf = (cfg: Config, periodStart: string): number =>
     ? cfg.monthBudget
     : (cfg.weekBudgetOverride ?? autoWeekBudget(cfg.monthBudget, periodStart))
 
+/** 今日额度优先；超出今日额度的支出由结余承担。 */
+const balanceAfterToday = (daily: number, carry: number, spent: number): number =>
+  spent < 0 ? carry - spent : carry - Math.max(0, spent - daily)
+
+const dailyAvailable = (daily: number, carry: number, spent: number): number => {
+  if (spent <= 0) return daily
+  const afterDaily = daily - spent
+  if (afterDaily >= 0) return afterDaily
+  const afterCarry = carry + afterDaily
+  return afterCarry >= 0 ? 0 : afterCarry
+}
+
 /**
  * 期间结束日：
  * - 周模式：起点 + 6 天；
@@ -48,6 +60,7 @@ const ZERO_STATE = (today: string): BudgetState => ({
   baseToday: 0,
   pool: 0,
   availableToday: 0,
+  periodBalance: 0,
   issuedInPeriod: 0,
   spentInPeriod: 0,
   remainingInPeriod: 0,
@@ -59,8 +72,8 @@ const ZERO_STATE = (today: string): BudgetState => ({
  * 预算引擎：从首个事件逐日模拟到 today，再给出当前期间的未来投影。
  *
  * 规则（spec §4）：
- * - 每日发放额度 B；`pool` = 已发放 − 已花；当日可花 = pool(昨日) + B − 当日已花（实时，可负）
- * - 单独某天的预算优先：该天发放 = 设定金额，且该天显示不受结转池拖累（= 设定金额 − 当日已花），
+ * - 每日发放额度 B；今日额度单独展示。每日额度用尽后才消耗昨日结余 pool；两者都耗尽后显示负数。
+ * - 单独某天的预算优先：该天发放 = 设定金额，且该金额作为当日额度，
  *   差额由其他天自动重算吸收；
  * - 其他天自动重算：`B =（当期预算 − 已发放 − 本日及以后所有单独预算）÷（本日及以后无单独预算的天数）`；
  *   预算额中途调整也被该公式自动吸收；若重算结果被压到负数，则 `overridesFeasible = false`（界面提示预算不足）。
@@ -144,7 +157,6 @@ export function computeBudgetState(input: EngineInput): BudgetState {
   let poolAtTodayStart = 0
   let baseToday = 0
   let spentTodayTotal = 0
-  let todayIsOverride = false
 
   for (let d = firstEvent.at; d <= today; d = addDays(d, 1)) {
     if (d > periodEnd) startPeriod(d, carryoverAcrossPeriod)
@@ -178,13 +190,12 @@ export function computeBudgetState(input: EngineInput): BudgetState {
       poolAtTodayStart = pool
       baseToday = issued
       spentTodayTotal = spentToday
-      todayIsOverride = isOverride
     }
 
     allDays.push({
       date: d,
       base: round2(issued),
-      // 单独预算日：显示设定金额 − 当日已花（不受结转池拖累）；其他日：结转池 + 当日发放 − 当日已花（可为负）
+      // 日历沿用累计结转视图；首页的今日额度单独显示。
       available: round2(isOverride ? issued - spentToday : pool + issued - spentToday),
       spent: round2(spentToday),
       isOverride,
@@ -199,8 +210,8 @@ export function computeBudgetState(input: EngineInput): BudgetState {
     .filter((x) => x.periodStart === periodStart)
     .map(({ periodStart: _ps, ...rest }) => rest)
 
-  let futurePool = pool
   let projectedIssued = issuedInPeriod
+  let futurePool = pool
   for (let d = addDays(today, 1); d <= periodEnd; d = addDays(d, 1)) {
     const { issued, isOverride } = computeIssued(d, projectedIssued)
     days.push({
@@ -211,8 +222,8 @@ export function computeBudgetState(input: EngineInput): BudgetState {
       spent: 0,
       isOverride,
     })
-    futurePool += issued
     projectedIssued += issued
+    futurePool += issued
   }
 
   return {
@@ -223,10 +234,9 @@ export function computeBudgetState(input: EngineInput): BudgetState {
     baseToday: round2(baseToday),
     pool: round2(poolAtTodayStart),
     availableToday: round2(
-      todayIsOverride
-        ? baseToday - spentTodayTotal
-        : poolAtTodayStart + baseToday - spentTodayTotal,
+      dailyAvailable(baseToday, poolAtTodayStart, spentTodayTotal),
     ),
+    periodBalance: round2(balanceAfterToday(baseToday, poolAtTodayStart, spentTodayTotal)),
     issuedInPeriod: round2(issuedInPeriod),
     spentInPeriod: round2(spentInPeriod),
     remainingInPeriod: round2(periodBudget - spentInPeriod),

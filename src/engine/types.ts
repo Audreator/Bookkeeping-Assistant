@@ -33,7 +33,7 @@ export interface DayAllowance {
   date: string
   /** 当日发放的额度（单独设预算的日子即为该金额） */
   base: number
-  /** 当日可花（含结转，已扣当日消费），未来日为无消费投影 */
+  /** 日历的每日累计可用额（含结转，已扣当日消费），未来日为无消费投影 */
   available: number
   /** 当日实际已花（支出 − 退款），未来日为 0 */
   spent: number
@@ -58,6 +58,8 @@ export interface BudgetState {
   /** 截至昨日的结转池（可负） */
   pool: number
   availableToday: number
+  /** 今日额度耗尽后可使用的结余；超出结余的部分显示为负数 */
+  periodBalance: number
   issuedInPeriod: number
   /** 净已花 = 纳入预算的支出 − 退款/收入，可为负；展示进度需另行解释净入账。 */
   spentInPeriod: number

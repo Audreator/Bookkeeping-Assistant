@@ -80,9 +80,9 @@ export function Today() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-stone-400">本期剩余</div>
+            <div className="text-xs text-stone-400">本期结余</div>
             <div className="mt-0.5 text-sm font-medium">
-              <Money value={state.remainingInPeriod} />
+              <Money value={state.periodBalance} />
             </div>
           </div>
           <div>
